@@ -1,0 +1,237 @@
+@import "tailwindcss";
+
+@source "../**/*.{js,jsx,ts,tsx}";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --background: #f3fcef;
+  --foreground: #151e16;
+
+  --color-primary: #006d2f;
+  --color-secondary: #006b5f;
+  --color-surface: #f3fcef;
+  --color-on-tertiary-container: #78351b;
+  --color-inverse-on-surface: #eaf3e6;
+  --color-on-tertiary-fixed: #380d00;
+  --color-surface-tint: #006d2f;
+  --color-surface-container: #e7f1e4;
+  --color-surface-container-lowest: #ffffff;
+  --color-background: #f3fcef;
+  --color-tertiary: #93492e;
+  --color-primary-fixed: #66ff8e;
+  --color-inverse-primary: #3de273;
+  --color-surface-dim: #d3ddd0;
+  --color-tertiary-fixed-dim: #ffb59b;
+  --color-secondary-container: #8cf1e1;
+  --color-on-primary: #ffffff;
+  --color-surface-container-low: #edf6e9;
+  --color-tertiary-container: #ffa07e;
+  --color-on-tertiary: #ffffff;
+  --color-primary-container: #25d366;
+  --color-outline: #6c7b6b;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-fixed-variant: #005047;
+  --color-tertiary-fixed: #ffdbcf;
+  --color-on-background: #151e16;
+  --color-on-secondary-fixed: #00201c;
+  --color-on-tertiary-fixed-variant: #763319;
+  --color-on-primary-fixed: #002109;
+  --color-on-surface: #151e16;
+  --color-inverse-surface: #2a332a;
+  --color-on-primary-fixed-variant: #005322;
+  --color-on-secondary-container: #006f64;
+  --color-surface-variant: #dce5d8;
+  --color-surface-container-highest: #dce5d8;
+  --color-on-error-container: #93000a;
+  --color-outline-variant: #bbcbb9;
+  --color-on-primary-container: #005523;
+  --color-on-error: #ffffff;
+  --color-on-surface-variant: #3c4a3d;
+  --color-secondary-fixed-dim: #72d8c8;
+  --color-surface-container-high: #e2ebde;
+  --color-surface-bright: #f3fcef;
+  --color-primary-fixed-dim: #3de273;
+  --color-error-container: #ffdad6;
+  --color-secondary-fixed: #8ff4e3;
+  --color-error: #ba1a1a;
+
+}
+
+html, body {
+  overscroll-behavior: none;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+  background-color: var(--color-background);
+  color: var(--color-on-background);
+  font-family: 'Inter', sans-serif;
+  min-height: 100dvh;
+}
+
+/* Custom styles from Stitch reference */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 2px;
+}
+@media (min-width: 768px) {
+  .gallery-grid {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 4px;
+      padding: 4px;
+  }
+}
+
+.aspect-square-clip {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  position: relative;
+}
+.aspect-square-clip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.aspect-square-clip:hover img {
+  transform: scale(1.05);
+}
+
+.duration-overlay {
+  background: linear-gradient(0deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
+}
+
+.chat-bg {
+  background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuDYHWykwIjaOrqQQRqBqWS2xZjKxqkWts5vC-10oJexhXhhranffnAKRQI9azZwab7K8eBjBbyQRPoqqhMNKpTcBL0iH26qd2Aqy9nli_8MiMOZZm90_Jv6J5LyI5A1mpe6CqTSBFvI3HNe8tgLQ8pe7qBmoh2oEPTc_ik8UyvmvICt-DC7p64p-FXyrAQePe7-gAfyPb_RgvPxMfijfmKoaqSZMj7QS7csIhIY6p5KEesgQd9AFfnTMIV0VCx-6Fho0I98K3MxOvU);
+  background-color: #E5DDD5;
+  background-blend-mode: multiply;
+}
+
+.status-ring {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 25;
+  transition: stroke-dashoffset 0.5s ease;
+}
+.status-ring-viewed {
+  stroke: #bbcbb9; /* outline-variant */
+}
+.status-ring-unread {
+  stroke: #006d2f; /* primary */
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Font Utilities for Stitch Layouts */
+@utility font-display-lg {
+  font-family: 'Inter', sans-serif;
+}
+@utility text-display-lg {
+  font-size: 30px;
+  line-height: 38px;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+@utility font-headline-lg-mobile {
+  font-family: 'Inter', sans-serif;
+}
+@utility text-headline-lg-mobile {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+}
+@utility font-label-sm {
+  font-family: 'Inter', sans-serif;
+}
+@utility text-label-sm {
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+}
+@utility font-headline-sm {
+  font-family: 'Inter', sans-serif;
+}
+@utility text-headline-sm {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+@utility font-label-md {
+  font-family: 'Inter', sans-serif;
+}
+@utility text-label-md {
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.01em;
+  font-weight: 500;
+}
+@utility font-headline-md {
+  font-family: 'Inter', sans-serif;
+}
+@utility text-headline-md {
+  font-size: 20px;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+@utility font-body-md {
+  font-family: 'Inter', sans-serif;
+}
+@utility text-body-md {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+@utility font-body-lg {
+  font-family: 'Inter', sans-serif;
+}
+@utility text-body-lg {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+/* Material Symbols Outlined Custom Class overrides */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+.otp-input::-webkit-outer-spin-button,
+.otp-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.otp-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Floating Label Styles for Phone Login */
+.floating-input:focus-within label,
+.floating-input input:not(:placeholder-shown) + label {
+    transform: translateY(-120%) scale(0.85);
+    top: 50%;
+    background-color: #ffffff;
+    padding: 0 4px;
+    color: #006d2f;
+}
