@@ -113,31 +113,6 @@ export default function ContactProfilePage({ params: paramsPromise }) {
             >
               <span className="material-symbols-outlined text-[24px]">arrow_back</span>
             </button>
-            <div className="flex items-center gap-2">
-              {isGroup ? (
-                <>
-                  <div className="w-[32px] h-[32px] rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 overflow-hidden">
-                    <span className="material-symbols-outlined text-[16px] text-blue-500 fill">local_car_wash</span>
-                  </div>
-                  <span className="text-[16px] font-bold text-[#1c2e35] max-w-[190px] truncate">
-                    Cleanzo Android+iOS...
-                  </span>
-                </>
-              ) : (
-                <>
-                  <div className="w-[32px] h-[32px] rounded-full overflow-hidden border border-zinc-100 shrink-0">
-                    <img 
-                      alt="Kittu" 
-                      className="w-full h-full object-cover" 
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuD209t6Zin8k_HGjBSvGIRB_KONmSIL8sbz2S-MQFb6yxRje3Ge3PGp-yyOH_yZg4mCb_u8FkyApwL2yhfjFnLSiwHkH3lawFQHkpZmSRXx5D7BGsdZYSdvP6PhIeM3t9PjrvbV02NUdZMoHPGEZ-ZwJRlrv8enxQjqxirmtclZn9U_UQz7m55E9_VQNGreM6hRVv44INUgYZ7PQRf4Oct93w5plsG6f9LeRAuAOZt_QSgliP9AOs46NF7TylHhikGVRGfXyCWVFLo" 
-                    />
-                  </div>
-                  <span className="text-[16px] font-bold text-[#1c2e35] max-w-[190px] truncate">
-                    Kittu
-                  </span>
-                </>
-              )}
-            </div>
           </div>
 
           <div className="flex items-center gap-3 text-[#54656f]">

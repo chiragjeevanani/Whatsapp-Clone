@@ -80,7 +80,7 @@ export default function MediaGalleryPage({ params: paramsPromise }) {
   };
 
   const handleBack = () => {
-    router.push(`/chats/${id}/profile`);
+    router.push(`/chats/${id}`);
   };
 
   const renderTabContent = () => {

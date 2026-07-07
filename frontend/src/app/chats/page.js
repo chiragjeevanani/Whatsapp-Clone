@@ -10,6 +10,10 @@ export default function ChatsPage() {
   const [showSelectContact, setShowSelectContact] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [quickProfileChat, setQuickProfileChat] = useState(null);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinValue, setPinValue] = useState("");
+  const [isPinError, setIsPinError] = useState(false);
+  const [showLockedChatsList, setShowLockedChatsList] = useState(false);
 
   const chatList = [
     {
@@ -112,6 +116,32 @@ export default function ChatsPage() {
       isPinned: false,
       doubleCheck: false,
     },
+    {
+      id: "sikh-street",
+      name: "Sikh Street (Android iOS)",
+      avatar: null,
+      avatarBg: "bg-emerald-100 text-emerald-600",
+      time: "18:41",
+      message: "Amit: Definitely sir",
+      unread: 10,
+      isGroup: true,
+      isPinned: false,
+      doubleCheck: false,
+      isLocked: true,
+    },
+    {
+      id: "stuti-pyarii",
+      name: "Stuti Pyarii Bhnaaa✨",
+      avatar: null,
+      avatarBg: "bg-rose-100 text-rose-700",
+      time: "17:58",
+      message: "Abhi tk kuch bnaya h ya ni phle toh ye btaoo",
+      unread: 0,
+      isGroup: false,
+      isPinned: false,
+      doubleCheck: false,
+      isLocked: true,
+    },
   ];
 
   const contactsList = [
@@ -168,6 +198,17 @@ export default function ChatsPage() {
 
   const handleChatClick = (id) => {
     router.push(`/chats/${id}`);
+  };
+
+  const handlePinSubmit = (e) => {
+    e.preventDefault();
+    if (pinValue === "1234") {
+      setIsPinError(false);
+      setShowPinModal(false);
+      setShowLockedChatsList(true);
+    } else {
+      setIsPinError(true);
+    }
   };
 
   // 1. SELECT CONTACT OVERLAY VIEW (NEW CHAT FAB)
@@ -235,9 +276,9 @@ export default function ChatsPage() {
             <span className="text-[15.5px] font-bold text-[#1c2e35]">New community</span>
           </div>
 
-          {/* Section: Contacts on WhatsApp */}
+          {/* Section: Contacts on Zetto */}
           <div className="text-[13.5px] font-bold text-[#667781] pt-4 pb-2">
-            Contacts on WhatsApp
+            Contacts on Zetto
           </div>
           <div className="flex flex-col pb-10">
             {contactsList.map((c) => (
@@ -277,7 +318,7 @@ export default function ChatsPage() {
     <div className="w-full bg-white text-[#1c2e35] antialiased min-h-screen flex flex-col pb-24 font-sans select-none">
       {/* Top Header */}
       <header className="sticky top-0 bg-white z-40 px-4 py-3 flex justify-between items-center">
-        <h1 className="text-[23px] font-bold text-[#008069] tracking-wide font-sans">WhatsApp</h1>
+        <h1 className="text-[23px] font-bold text-[#008069] tracking-wide font-sans">Zetto</h1>
         <div className="flex items-center gap-5 text-[#3b4a54]">
           <button aria-label="Payments" className="p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95">
             <span className="material-symbols-outlined text-[24px]">currency_rupee</span>
@@ -318,6 +359,21 @@ export default function ChatsPage() {
         </button>
       </div>
 
+      {/* Locked Chats Row */}
+      <div 
+        onClick={() => {
+          setPinValue("");
+          setIsPinError(false);
+          setShowPinModal(true);
+        }}
+        className="px-5 py-3.5 flex items-center justify-between hover:bg-zinc-50 transition-colors cursor-pointer active:bg-zinc-100"
+      >
+        <div className="flex items-center gap-6">
+          <span className="material-symbols-outlined text-[#667781] text-[22px]">lock</span>
+          <span className="text-[16px] font-semibold text-[#1c2e35] tracking-wide">Locked chats</span>
+        </div>
+      </div>
+
       {/* Archived Row */}
       <div className="px-5 py-3.5 flex items-center justify-between hover:bg-zinc-50 transition-colors cursor-pointer active:bg-zinc-100">
         <div className="flex items-center gap-6">
@@ -330,7 +386,7 @@ export default function ChatsPage() {
       {/* Chat List */}
       <main className="flex-1 w-full">
         <ul className="flex flex-col">
-          {chatList.map((chat) => (
+          {chatList.filter(chat => !chat.isLocked).map((chat) => (
             <li
               key={chat.id}
               onClick={() => handleChatClick(chat.id)}
@@ -522,6 +578,133 @@ export default function ChatsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* PIN Verification Modal Overlay */}
+      {showPinModal && (
+        <div className="fixed inset-0 z-[150] bg-black/60 flex items-center justify-center p-4 transition-all duration-200">
+          <div className="w-full max-w-[340px] bg-white rounded-[24px] overflow-hidden text-[#111b21] shadow-2xl flex flex-col font-sans select-none animate-in fade-in zoom-in-95 duration-150 p-6">
+            <h3 className="text-[18px] font-bold text-[#111b21]">Locked Chats</h3>
+            <p className="text-[13.5px] text-[#667781] mt-2 mb-4 leading-relaxed">
+              Enter your passcode to view locked chats. <br/>
+              <span className="text-zinc-400 text-[12px] font-medium">(Hint PIN: 1234)</span>
+            </p>
+            
+            <form onSubmit={handlePinSubmit} className="flex flex-col gap-4">
+              <input 
+                type="password"
+                maxLength={4}
+                pattern="[0-9]*"
+                inputMode="numeric"
+                value={pinValue}
+                onChange={(e) => {
+                  setPinValue(e.target.value);
+                  setIsPinError(false);
+                }}
+                placeholder="••••"
+                className="w-full bg-[#f0f2f5] border-none focus:outline-none rounded-xl py-3 px-4 text-center text-[22px] tracking-[8px] font-bold text-[#111b21]"
+                autoFocus
+              />
+              
+              {isPinError && (
+                <span className="text-[12.5px] text-rose-500 font-semibold text-center">
+                  Incorrect PIN. Please try again.
+                </span>
+              )}
+              
+              <div className="flex justify-end gap-3 mt-2">
+                <button 
+                  type="button"
+                  onClick={() => setShowPinModal(false)}
+                  className="text-zinc-600 hover:text-zinc-800 font-bold text-[14px] px-3 py-2 cursor-pointer active:scale-95 transition-transform"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="text-[#00a884] hover:text-[#008f70] font-bold text-[14px] px-3 py-2 cursor-pointer active:scale-95 transition-transform"
+                >
+                  Unlock
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Locked Chats List Overlay */}
+      {showLockedChatsList && (
+        <div className="fixed inset-0 z-[150] bg-white flex flex-col font-sans select-none animate-in slide-in-from-right duration-250">
+          {/* Header */}
+          <header className="px-4 py-3 flex items-center bg-white border-b border-zinc-100 shrink-0">
+            <button 
+              onClick={() => setShowLockedChatsList(false)}
+              className="p-1.5 hover:bg-zinc-100 rounded-full active:scale-95 transition-transform text-[#1c2e35]"
+            >
+              <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+            </button>
+            <div className="flex items-center gap-2 ml-4">
+              <span className="material-symbols-outlined text-[20px] text-[#008069] fill">lock</span>
+              <span className="text-[17px] font-bold text-[#1c2e35] tracking-wide">Locked chats</span>
+            </div>
+          </header>
+
+          {/* List of Locked Chats */}
+          <main className="flex-1 overflow-y-auto">
+            <ul className="flex flex-col">
+              {chatList.filter(chat => chat.isLocked).map((chat) => (
+                <li
+                  key={chat.id}
+                  onClick={() => {
+                    setShowLockedChatsList(false);
+                    handleChatClick(chat.id);
+                  }}
+                  className="flex items-center px-4 py-3 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
+                >
+                  {/* Avatar */}
+                  <div className="relative shrink-0 mr-3.5">
+                    {chat.avatar ? (
+                      <div className="w-[52px] h-[52px] rounded-full overflow-hidden border border-zinc-100">
+                        <img alt={chat.name} className="w-full h-full object-cover" src={chat.avatar} />
+                      </div>
+                    ) : (
+                      <div className={`w-[52px] h-[52px] rounded-full flex items-center justify-center ${chat.avatarBg || "bg-[#dfe5e7] text-[#54656f]"} font-semibold text-sm overflow-hidden`}>
+                        {chat.avatarText ? (
+                          <span className="text-[11px] font-bold leading-none tracking-tight text-center px-1 truncate w-full">{chat.avatarText}</span>
+                        ) : (
+                          <span className="material-symbols-outlined text-[30px] fill opacity-80">person</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center border-none">
+                    <div className="flex justify-between items-baseline mb-0.5">
+                      <h2 className="text-[16px] font-bold text-[#1c2e35] truncate tracking-wide max-w-[75%]">
+                        {chat.name}
+                      </h2>
+                      <span className="text-[12px] shrink-0 font-medium text-[#667781]">
+                        {chat.time}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#667781] text-[14px] truncate font-normal">
+                        {chat.message}
+                      </span>
+                      {chat.unread > 0 && (
+                        <span className="inline-flex items-center justify-center bg-[#00a884] text-white text-[11px] font-bold w-[21px] h-[21px] rounded-full">
+                          {chat.unread}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </main>
+        </div>
+      )}
     </div>
   );
 }

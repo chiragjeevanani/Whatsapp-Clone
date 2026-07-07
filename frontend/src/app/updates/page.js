@@ -76,7 +76,7 @@ export default function UpdatesPage() {
       name: "Zero_Investment_Work...📌",
       avatarBg: "bg-emerald-100 text-emerald-700",
       avatarIcon: "eco",
-      message: "📷 Message my WhatsApp number :- 9756336...",
+      message: "📷 Message my Zetto number :- 9756336...",
       time: "28/10/2025",
       unread: 0,
       followers: "12K followers",

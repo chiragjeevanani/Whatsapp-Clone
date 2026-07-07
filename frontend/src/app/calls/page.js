@@ -188,7 +188,7 @@ export default function CallsPage() {
     },
   ];
 
-  const contactsOnWhatsApp = [
+  const contactsOnZetto = [
     {
       id: "c1",
       name: "******8547",
@@ -212,8 +212,8 @@ export default function CallsPage() {
     },
   ];
 
-  const contactsOnWhatsAppFavourites = [
-    ...contactsOnWhatsApp,
+  const contactsOnZettoFavourites = [
+    ...contactsOnZetto,
     {
       id: "c5",
       name: "1111",
@@ -582,10 +582,10 @@ export default function CallsPage() {
           </div>
 
           <div className="text-[13.5px] font-bold text-[#667781] pt-4 pb-2">
-            Contacts on WhatsApp
+            Contacts on Zetto
           </div>
           <div className="flex flex-col pb-10">
-            {contactsOnWhatsApp.map((c) => (
+            {contactsOnZetto.map((c) => (
               <div
                 key={c.id}
                 onClick={() => toggleSelectContact(c.id)}
@@ -680,12 +680,12 @@ export default function CallsPage() {
             ))}
           </div>
 
-          {/* Section: Contacts on WhatsApp */}
+          {/* Section: Contacts on Zetto */}
           <div className="text-[13.5px] font-bold text-[#667781] pt-4 pb-2">
-            Contacts on WhatsApp
+            Contacts on Zetto
           </div>
           <div className="flex flex-col pb-20">
-            {contactsOnWhatsAppFavourites.map((c) => (
+            {contactsOnZettoFavourites.map((c) => (
               <div
                 key={c.id}
                 onClick={() => toggleSelectFavourite(c.id)}
