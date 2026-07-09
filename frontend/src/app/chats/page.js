@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navigation from "@/components/Navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,8 +16,37 @@ export default function ChatsPage() {
   const [showLockedChatsList, setShowLockedChatsList] = useState(false);
   const [showArchivedChatsList, setShowArchivedChatsList] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const chatList = [
+  useEffect(() => {
+    const theme = localStorage.getItem("theme");
+    const isDark = theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    setIsDarkMode(isDark);
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+    } else {
+      document.documentElement.classList.add("light");
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextDark = !isDarkMode;
+    setIsDarkMode(nextDark);
+    if (nextDark) {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.add("light");
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
+
+  const [chats, setChats] = useState([
     {
       id: "appzeto-official",
       name: "Appzeto_Official",
@@ -223,7 +252,7 @@ export default function ChatsPage() {
       isPinned: false,
       doubleCheck: true,
     },
-  ];
+  ]);
 
   const contactsList = [
     {
@@ -407,9 +436,101 @@ export default function ChatsPage() {
           <button aria-label="Camera" className="p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95">
             <span className="material-symbols-outlined text-[24px]">photo_camera</span>
           </button>
-          <button aria-label="More options" className="p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95">
-            <span className="material-symbols-outlined text-[24px]">more_vert</span>
+          
+          <button 
+            onClick={toggleTheme}
+            aria-label="Toggle Theme" 
+            className="p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95 cursor-pointer text-[#3b4a54] dark:text-white"
+          >
+            <span className="material-symbols-outlined text-[24px]">
+              {isDarkMode ? "light_mode" : "dark_mode"}
+            </span>
           </button>
+
+          <div className="relative">
+            <button 
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              aria-label="More options" 
+              className={`p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95 cursor-pointer ${showMoreMenu ? "bg-zinc-100" : ""}`}
+            >
+              <span className="material-symbols-outlined text-[24px]">more_vert</span>
+            </button>
+            
+            {showMoreMenu && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40 bg-transparent" 
+                  onClick={() => setShowMoreMenu(false)}
+                />
+                <div className="absolute right-0 top-9 w-[205px] bg-white rounded-[16px] shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 z-50 text-[#111b21] animate-in fade-in zoom-in-95 duration-100 origin-top-right border border-zinc-100">
+                  <button 
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      setShowSelectContact(true);
+                    }}
+                    className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer"
+                  >
+                    New group
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      router.push("/communities?action=new");
+                    }}
+                    className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer"
+                  >
+                    New community
+                  </button>
+                  <button 
+                    onClick={() => setShowMoreMenu(false)}
+                    className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer"
+                  >
+                    Broadcast lists
+                  </button>
+                  <button 
+                    onClick={() => setShowMoreMenu(false)}
+                    className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer"
+                  >
+                    Linked devices
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      setActiveFilter("favourites");
+                    }}
+                    className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer"
+                  >
+                    Starred
+                  </button>
+                  <button 
+                    onClick={() => setShowMoreMenu(false)}
+                    className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer"
+                  >
+                    Payments
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      setChats(prev => prev.map(c => ({ ...c, unread: 0 })));
+                    }}
+                    className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer"
+                  >
+                    Read all
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      router.push("/settings");
+                    }}
+                    className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] flex items-center justify-between cursor-pointer"
+                  >
+                    <span>Settings</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#00a884]"></span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -485,14 +606,14 @@ export default function ChatsPage() {
           <span className="text-[16px] font-semibold text-[#1c2e35] tracking-wide">Archived</span>
         </div>
         <span className="text-[12.5px] font-bold text-[#00a884] mr-1">
-          {chatList.filter(c => c.isArchived).length}
+          {chats.filter(c => c.isArchived).length}
         </span>
       </div>
 
       {/* Chat List */}
       <main className="flex-1 w-full">
         <ul className="flex flex-col">
-          {chatList
+          {chats
             .filter(chat => !chat.isLocked && !chat.isArchived)
             .filter((chat) => {
               if (activeFilter === "unread") return chat.unread > 0;
@@ -593,9 +714,6 @@ export default function ChatsPage() {
           <span className="material-symbols-outlined text-[24px]">chat_add_on</span>
         </button>
       </div>
-
-      {/* Bottom Navigation */}
-      <Navigation activeTab="chats" />
 
       {/* Quick Profile Modal */}
       <AnimatePresence>
@@ -765,7 +883,7 @@ export default function ChatsPage() {
           {/* List of Locked Chats */}
           <main className="flex-1 overflow-y-auto">
             <ul className="flex flex-col">
-              {chatList.filter(chat => chat.isLocked).map((chat) => (
+              {chats.filter(chat => chat.isLocked).map((chat) => (
                 <li
                   key={chat.id}
                   onClick={() => {
@@ -840,7 +958,7 @@ export default function ChatsPage() {
           {/* List of Archived Chats */}
           <main className="flex-1 overflow-y-auto">
             <ul className="flex flex-col">
-              {chatList.filter(chat => chat.isArchived).map((chat) => (
+              {chats.filter(chat => chat.isArchived).map((chat) => (
                 <li
                   key={chat.id}
                   onClick={() => {

@@ -90,16 +90,16 @@ export default function MediaGalleryPage({ params: paramsPromise }) {
           {mediaItems.Docs.map((doc) => (
             <div
               key={doc.id}
-              className="bg-white border border-zinc-200/60 rounded-xl p-4 flex items-center justify-between shadow-sm cursor-pointer hover:bg-zinc-50"
+              className="bg-white dark:bg-[#111b21] border border-zinc-200/60 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between shadow-sm cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900"
             >
               <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-[#00a884] text-3xl">description</span>
+                <span className="material-symbols-outlined text-[#00a884] dark:text-[#ff2d55] text-3xl">description</span>
                 <div>
-                  <p className="text-[14.5px] font-bold text-zinc-800 truncate w-56">{doc.name}</p>
-                  <p className="text-[12px] text-zinc-500">{doc.size} · {doc.date}</p>
+                  <p className="text-[14.5px] font-bold text-zinc-800 dark:text-zinc-200 truncate w-56">{doc.name}</p>
+                  <p className="text-[12px] text-zinc-500 dark:text-zinc-400">{doc.size} · {doc.date}</p>
                 </div>
               </div>
-              <span className="material-symbols-outlined text-zinc-500">download</span>
+              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400">download</span>
             </div>
           ))}
         </div>
@@ -115,14 +115,14 @@ export default function MediaGalleryPage({ params: paramsPromise }) {
               href={link.url}
               target="_blank"
               rel="noreferrer"
-              className="block bg-white border border-zinc-200/60 rounded-xl p-4 shadow-sm hover:bg-zinc-50 transition-colors"
+              className="block bg-white dark:bg-[#111b21] border border-zinc-200/60 dark:border-zinc-800 rounded-xl p-4 shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
             >
-              <p className="text-[14.5px] font-bold text-zinc-800">{link.title}</p>
-              <div className="flex items-center gap-1 mt-1.5 text-[12.5px] text-[#00a884] font-semibold">
+              <p className="text-[14.5px] font-bold text-zinc-800 dark:text-zinc-200">{link.title}</p>
+              <div className="flex items-center gap-1 mt-1.5 text-[12.5px] text-[#00a884] dark:text-[#ff2d55] font-semibold">
                 <span className="material-symbols-outlined text-[15px]">link</span>
                 <span>{link.domain}</span>
               </div>
-              <span className="block text-[11px] text-zinc-400 mt-1">{link.date}</span>
+              <span className="block text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">{link.date}</span>
             </a>
           ))}
         </div>
@@ -143,8 +143,8 @@ export default function MediaGalleryPage({ params: paramsPromise }) {
           return (
             <div key={sectionName} className="mb-4">
               {/* Section Header */}
-              <div className="px-4 py-2 sticky top-[104px] z-20 bg-white/95 backdrop-blur-sm">
-                <h2 className="text-[13px] font-bold text-zinc-500 uppercase tracking-wide">
+              <div className="px-4 py-2 sticky top-[104px] z-20 bg-white/95 dark:bg-[#0b141a]/95 backdrop-blur-sm">
+                <h2 className="text-[13px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
                   {sectionName}
                 </h2>
               </div>
@@ -154,7 +154,7 @@ export default function MediaGalleryPage({ params: paramsPromise }) {
                 {sectionItems.map((item) => (
                   <div
                     key={item.id}
-                    className="aspect-square bg-zinc-100 overflow-hidden relative cursor-pointer hover:opacity-90 active:scale-95 transition-all"
+                    className="aspect-square bg-zinc-100 dark:bg-zinc-900 overflow-hidden relative cursor-pointer hover:opacity-90 active:scale-95 transition-all"
                   >
                     <img
                       src={item.src}
@@ -179,27 +179,27 @@ export default function MediaGalleryPage({ params: paramsPromise }) {
   };
 
   return (
-    <div className="bg-white text-[#1c2e35] min-h-screen flex flex-col items-center font-sans antialiased">
+    <div className="bg-white dark:bg-[#0b141a] text-[#1c2e35] dark:text-[#e9edef] min-h-screen flex flex-col items-center font-sans antialiased">
       {/* Mobile Shell Container */}
-      <main className="w-full max-w-md bg-white flex flex-col relative shadow-2xl min-h-screen pb-12">
+      <main className="w-full max-w-md bg-white dark:bg-[#0b141a] flex flex-col relative shadow-2xl min-h-screen pb-12">
         
         {/* Fixed Header */}
-        <header className="sticky top-0 w-full z-30 bg-white flex flex-col pt-safe">
-          <div className="flex items-center h-[56px] px-3 border-b border-zinc-100/50">
+        <header className="sticky top-0 w-full z-30 bg-white dark:bg-[#111b21] flex flex-col pt-safe">
+          <div className="flex items-center h-[56px] px-3 border-b border-zinc-100/50 dark:border-zinc-800">
             <button
               onClick={handleBack}
               aria-label="Back"
-              className="w-9 h-9 flex items-center justify-center text-[#1c2e35] active:scale-95 transition-transform cursor-pointer"
+              className="w-9 h-9 flex items-center justify-center text-[#1c2e35] dark:text-[#e9edef] active:scale-95 transition-transform cursor-pointer"
             >
               <span className="material-symbols-outlined text-[24px]">arrow_back</span>
             </button>
-            <h1 className="text-[19px] font-bold text-[#1c2e35] ml-4">
+            <h1 className="text-[19px] font-bold text-[#1c2e35] dark:text-[#e9edef] ml-4">
               All media
             </h1>
           </div>
 
           {/* Gallery Tabs (Equal Widths) */}
-          <div className="flex border-b border-zinc-100 w-full">
+          <div className="flex border-b border-zinc-100 dark:border-zinc-800 w-full">
             {["Media", "Docs", "Links"].map((tab) => {
               const isActive = activeTab === tab;
               return (
@@ -208,8 +208,8 @@ export default function MediaGalleryPage({ params: paramsPromise }) {
                   onClick={() => setActiveTab(tab)}
                   className={`flex-1 text-center py-3.5 border-b-[3px] font-bold text-[14.5px] transition-all duration-150 cursor-pointer ${
                     isActive
-                      ? "border-[#00a884] text-[#00a884]"
-                      : "border-transparent text-zinc-500 hover:text-zinc-700"
+                      ? "border-[#00a884] dark:border-[#ff2d55] text-[#00a884] dark:text-[#ff2d55]"
+                      : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
                   }`}
                 >
                   {tab}

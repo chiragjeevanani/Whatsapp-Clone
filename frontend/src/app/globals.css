@@ -235,3 +235,182 @@ body {
     padding: 0 4px;
     color: #006d2f;
 }
+
+/* ========================================================
+   DARK MODE STYLING & ACCENTS (MATCHING USER SCREENSHOT)
+   ======================================================== */
+.dark {
+  --background: #0b141a;
+  --foreground: #e9edef;
+  --color-background: #0b141a;
+  --color-on-background: #e9edef;
+  --color-surface-container-lowest: #111b21;
+  --color-surface-container: #202c33;
+  --color-on-surface: #e9edef;
+  --color-on-surface-variant: #8696a0;
+  --color-outline-variant: #222d34;
+  --color-primary: #ff2d55; /* Red accent color matching screenshot */
+}
+
+/* Force dark theme backgrounds */
+.dark body,
+.dark .bg-white,
+.dark .bg-surface-container-lowest,
+.dark [class*="bg-[#f8f9fa]"] {
+  background-color: #0b141a !important;
+}
+
+.dark header.bg-white,
+.dark header,
+.dark nav,
+.dark .sticky,
+.dark .fixed.bottom-0 {
+  background-color: #111b21 !important;
+  border-color: #222d34 !important;
+}
+
+.dark .border-zinc-50,
+.dark .border-zinc-100,
+.dark .border-zinc-200,
+.dark .border-outline-variant\/30,
+.dark .border-outline-variant {
+  border-color: #222d34 !important;
+}
+
+/* Text overrides using standard CSS attribute substring selectors */
+.dark [class*="text-[#1c2e35]"],
+.dark [class*="text-[#111b21]"],
+.dark .text-on-surface {
+  color: #e9edef !important;
+}
+
+.dark [class*="text-[#667781]"],
+.dark [class*="text-[#54656f]"],
+.dark .text-on-surface-variant {
+  color: #8696a0 !important;
+}
+
+/* WhatsApp/Zetto title text in dark mode */
+.dark [class*="text-[#008069]"],
+.dark .text-primary {
+  color: #ffffff !important;
+}
+
+/* Search input container and hover backgrounds */
+.dark [class*="bg-[#f0f2f5]"],
+.dark .bg-zinc-100,
+.dark .bg-surface-container-high,
+.dark .bg-surface-container {
+  background-color: #202c33 !important;
+}
+
+.dark .hover\:bg-zinc-50:hover,
+.dark .hover\:bg-surface-container:hover,
+.dark .active\:bg-zinc-100:active {
+  background-color: #202c33 !important;
+}
+
+.dark input, 
+.dark textarea {
+  color: #e9edef !important;
+}
+
+.dark input::placeholder, 
+.dark textarea::placeholder {
+  color: #8696a0 !important;
+}
+
+/* Modal details */
+.dark .shadow-2xl,
+.dark .shadow-xl,
+.dark .shadow-lg {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Custom Navigation Bar styling for dark mode matching screenshot */
+.dark [class*="bg-[#e6f5ef]"] {
+  /* Active tab pill background is red as in screenshot */
+  background-color: #ff2d55 !important;
+}
+
+.dark [class*="text-[#0f8b5d]"] {
+  /* Active icon color in active pill is white as in screenshot */
+  color: #ffffff !important;
+}
+
+.dark [class*="text-[#1c2e35]"].font-bold {
+  /* Active text "Chats" or other active tab label is white in dark mode */
+  color: #ffffff !important;
+}
+
+.dark nav button span {
+  color: #8696a0;
+}
+
+.dark nav button [class*="text-[#0f8b5d]"] span {
+  color: #ffffff !important;
+}
+
+/* Floating Action Button (FAB) and community details highlights in Red/Crimson as in screenshot */
+.dark [class*="bg-[#00a884]"],
+.dark .bg-primary-container {
+  background-color: #ff2d55 !important;
+}
+
+.dark [class*="hover:bg-[#008f70]"]:hover,
+.dark [class*="hover:bg-[rgba(0,143,112)]"]:hover {
+  background-color: #e31c3d !important;
+}
+
+.dark [class*="text-[#00a884]"],
+.dark [class*="text-[#0f8b5d]"] {
+  color: #ff2d55 !important;
+}
+
+.dark [class*="border-[#00a884]"],
+.dark .border-secondary {
+  border-color: #ff2d55 !important;
+}
+
+.dark .text-on-primary {
+  color: #ffffff !important;
+}
+
+/* Community view additions */
+.dark [class*="bg-[#f0f2f5]"] {
+  background-color: #111b21 !important;
+}
+
+.dark [class*="bg-[#008069]/10"] {
+  background-color: rgba(255, 45, 85, 0.15) !important;
+  color: #ff2d55 !important;
+}
+.dark [class*="text-[#008069]"] {
+  color: #ff2d55 !important;
+}
+.dark [class*="bg-[#e6f5ef]"] {
+  background-color: rgba(255, 45, 85, 0.15) !important;
+  color: #ff2d55 !important;
+}
+.dark [class*="text-[#0f8b5d]"] {
+  color: #ff2d55 !important;
+}
+
+/* Chat Lock Switch Toggle color in dark mode */
+.dark [class*="peer-checked:bg-[#00a884]"] {
+  background-color: #ff2d55 !important;
+}
+
+.dark .floating-input:focus-within label,
+.dark .floating-input input:not(:placeholder-shown) + label {
+    background-color: #0b141a !important;
+    color: #ff2d55 !important;
+}
+
+.dark .bg-surface-container-lowest {
+  background-color: #111b21 !important;
+}
+
+.dark .bg-primary-container {
+  background-color: #ff2d55 !important;
+}

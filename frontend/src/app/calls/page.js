@@ -838,8 +838,6 @@ export default function CallsPage() {
         </button>
       </div>
 
-      {/* Bottom NavBar */}
-      <Navigation activeTab="calls" />
     </div>
   );
 }

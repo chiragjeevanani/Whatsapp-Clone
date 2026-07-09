@@ -67,7 +67,7 @@ export default function VerifyPage() {
       setVerified(true);
       // Simulate redirection after a brief checkmark animation
       setTimeout(() => {
-        router.push("/profile-setup");
+        router.push("/chats");
       }, 1000);
     }
   };

@@ -760,10 +760,7 @@ export default function UpdatesPage() {
         >
           <span className="material-symbols-outlined text-[24px]">photo_camera</span>
         </button>
-      </div>
-
-      {/* Bottom NavBar */}
-      <Navigation activeTab="updates" />
     </div>
-  );
+  </div>
+);
 }

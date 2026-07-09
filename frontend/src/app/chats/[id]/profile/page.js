@@ -99,29 +99,29 @@ export default function ContactProfilePage({ params: paramsPromise }) {
   ];
 
   return (
-    <div className="bg-[#f7f8fa] text-[#1c2e35] min-h-screen flex flex-col items-center font-sans antialiased">
+    <div className="bg-[#f7f8fa] dark:bg-[#0b141a] text-[#1c2e35] dark:text-[#e9edef] min-h-screen flex flex-col items-center font-sans antialiased">
       {/* Mobile Shell Container */}
-      <main className="w-full max-w-md bg-white flex flex-col relative shadow-2xl min-h-screen pb-16">
+      <main className="w-full max-w-md bg-white dark:bg-[#0b141a] flex flex-col relative shadow-2xl min-h-screen pb-16">
         
         {/* Sticky Header */}
-        <header className="sticky top-0 bg-white z-40 flex justify-between items-center h-[56px] px-3 border-b border-zinc-100/80">
+        <header className="sticky top-0 bg-white dark:bg-[#111b21] z-40 flex justify-between items-center h-[56px] px-3 border-b border-zinc-100/80 dark:border-zinc-800">
           <div className="flex items-center gap-3">
             <button
               onClick={handleBack}
               aria-label="Back"
-              className="w-9 h-9 flex items-center justify-center text-[#1c2e35] active:scale-95 transition-transform cursor-pointer"
+              className="w-9 h-9 flex items-center justify-center text-[#1c2e35] dark:text-[#e9edef] active:scale-95 transition-transform cursor-pointer"
             >
               <span className="material-symbols-outlined text-[24px]">arrow_back</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-3 text-[#54656f]">
+          <div className="flex items-center gap-3 text-[#54656f] dark:text-[#8696a0]">
             {isGroup && (
-              <button className="p-1 hover:bg-zinc-100 rounded-full cursor-pointer">
+              <button className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full cursor-pointer">
                 <span className="material-symbols-outlined text-[22px]">qr_code_2</span>
               </button>
             )}
-            <button className="p-1 hover:bg-zinc-100 rounded-full cursor-pointer">
+            <button className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full cursor-pointer">
               <span className="material-symbols-outlined text-[22px]">more_vert</span>
             </button>
           </div>
@@ -131,34 +131,34 @@ export default function ContactProfilePage({ params: paramsPromise }) {
         <div className="flex-1 overflow-y-auto pb-safe">
           
           {/* Hero Header Card */}
-          <div className="bg-white px-4 pt-6 pb-4 flex flex-col items-center border-b border-zinc-100">
+          <div className="bg-white dark:bg-[#0b141a] px-4 pt-6 pb-4 flex flex-col items-center border-b border-zinc-100 dark:border-zinc-800">
             {isGroup ? (
               <>
                 {/* Cleanzo Big Logo */}
-                <div className="w-[110px] h-[110px] rounded-full bg-[#f4fbfc] border border-blue-100 flex flex-col items-center justify-center relative overflow-hidden shadow-sm mb-4">
-                  <span className="material-symbols-outlined text-[#00a884] text-[36px] absolute top-2 right-6">sparkles</span>
-                  <span className="material-symbols-outlined text-[#0b805c] text-[48px] fill">local_car_wash</span>
-                  <span className="text-[12px] font-black uppercase text-[#0b805c] tracking-widest mt-1">Cleanzo</span>
+                <div className="w-[110px] h-[110px] rounded-full bg-[#f4fbfc] dark:bg-[#111b21] border border-blue-100 dark:border-zinc-800 flex flex-col items-center justify-center relative overflow-hidden shadow-sm mb-4">
+                  <span className="material-symbols-outlined text-[#00a884] dark:text-[#ff2d55] text-[36px] absolute top-2 right-6">sparkles</span>
+                  <span className="material-symbols-outlined text-[#0b805c] dark:text-[#ff2d55] text-[48px] fill">local_car_wash</span>
+                  <span className="text-[12px] font-black uppercase text-[#0b805c] dark:text-[#ff2d55] tracking-widest mt-1">Cleanzo</span>
                 </div>
 
                 {/* Group Name & Members */}
-                <h1 className="text-[20px] font-bold text-[#1c2e35] text-center leading-tight tracking-wide px-2 max-w-[320px]">
+                <h1 className="text-[20px] font-bold text-[#1c2e35] dark:text-[#e9edef] text-center leading-tight tracking-wide px-2 max-w-[320px]">
                   Cleanzo Android+iOS mobile Application development
                 </h1>
-                <p className="text-[13px] text-zinc-500 mt-1 font-medium">
-                  Group <span className="text-[#0b805c] font-semibold">· 13 members</span>
+                <p className="text-[13px] text-zinc-500 dark:text-zinc-400 mt-1 font-medium">
+                  Group <span className="text-[#0b805c] dark:text-[#ff2d55] font-semibold">· 13 members</span>
                 </p>
 
                 {/* Custom Description */}
-                <div className="text-center mt-3 bg-zinc-50 rounded-xl px-4 py-2.5 max-w-[320px] border border-zinc-100/50">
-                  <p className="text-[13.5px] font-bold text-zinc-700 leading-none">Custom</p>
-                  <p className="text-[13px] text-zinc-500 mt-1 leading-normal">Daily Exterior car cleaning Services</p>
+                <div className="text-center mt-3 bg-zinc-50 dark:bg-zinc-900 rounded-xl px-4 py-2.5 max-w-[320px] border border-zinc-100/50 dark:border-zinc-800">
+                  <p className="text-[13.5px] font-bold text-zinc-700 dark:text-zinc-300 leading-none">Custom</p>
+                  <p className="text-[13px] text-zinc-500 dark:text-zinc-400 mt-1 leading-normal">Daily Exterior car cleaning Services</p>
                 </div>
               </>
             ) : (
               <>
                 {/* Kittu Big Avatar */}
-                <div className="w-[115px] h-[115px] rounded-full overflow-hidden border-2 border-zinc-100 shadow-sm mb-3">
+                <div className="w-[115px] h-[115px] rounded-full overflow-hidden border-2 border-zinc-100 dark:border-zinc-800 shadow-sm mb-3">
                   <img 
                     alt="Kittu" 
                     className="w-full h-full object-cover" 
@@ -167,15 +167,15 @@ export default function ContactProfilePage({ params: paramsPromise }) {
                 </div>
 
                 {/* Contact Name & Number */}
-                <h1 className="text-[22px] font-bold text-[#1c2e35] text-center leading-none tracking-wide">
+                <h1 className="text-[22px] font-bold text-[#1c2e35] dark:text-[#e9edef] text-center leading-none tracking-wide">
                   Kittu
                 </h1>
-                <p className="text-[14.5px] text-zinc-600 mt-2 font-medium">
+                <p className="text-[14.5px] text-zinc-600 dark:text-zinc-400 mt-2 font-medium">
                   +91 79993 54471
                 </p>
 
                 {/* Instagram Link */}
-                <div className="flex items-center gap-1.5 mt-2.5 text-[13.5px] text-zinc-500 hover:text-[#0b805c] hover:underline cursor-pointer bg-zinc-50 px-3.5 py-1.5 rounded-full border border-zinc-100/50">
+                <div className="flex items-center gap-1.5 mt-2.5 text-[13.5px] text-zinc-500 dark:text-zinc-400 hover:text-[#0b805c] dark:hover:text-[#ff2d55] hover:underline cursor-pointer bg-zinc-50 dark:bg-zinc-900 px-3.5 py-1.5 rounded-full border border-zinc-100/50 dark:border-zinc-800">
                   <span className="material-symbols-outlined text-[17px]">link</span>
                   <span className="font-medium">instagram.com/official_tj_music</span>
                 </div>
@@ -184,39 +184,39 @@ export default function ContactProfilePage({ params: paramsPromise }) {
 
             {/* Bento Quick Actions Grid */}
             <div className={`grid gap-3 w-full mt-6 px-1 ${isGroup ? "grid-cols-4" : "grid-cols-3"}`}>
-              <button className="flex flex-col items-center justify-center gap-1.5 py-3.5 border border-zinc-200/80 rounded-2xl active:bg-zinc-50 cursor-pointer transition-colors">
-                <span className="material-symbols-outlined text-[#0b805c] text-[22px]">call</span>
-                <span className="text-[12.5px] font-bold text-zinc-700">Audio</span>
+              <button className="flex flex-col items-center justify-center gap-1.5 py-3.5 border border-zinc-200/80 dark:border-zinc-800 rounded-2xl active:bg-zinc-50 dark:active:bg-zinc-900 cursor-pointer transition-colors">
+                <span className="material-symbols-outlined text-[#0b805c] dark:text-[#ff2d55] text-[22px]">call</span>
+                <span className="text-[12.5px] font-bold text-zinc-700 dark:text-zinc-300">Audio</span>
               </button>
-              <button className="flex flex-col items-center justify-center gap-1.5 py-3.5 border border-zinc-200/80 rounded-2xl active:bg-zinc-50 cursor-pointer transition-colors">
-                <span className="material-symbols-outlined text-[#0b805c] text-[22px]">videocam</span>
-                <span className="text-[12.5px] font-bold text-zinc-700">Video</span>
+              <button className="flex flex-col items-center justify-center gap-1.5 py-3.5 border border-zinc-200/80 dark:border-zinc-800 rounded-2xl active:bg-zinc-50 dark:active:bg-zinc-900 cursor-pointer transition-colors">
+                <span className="material-symbols-outlined text-[#0b805c] dark:text-[#ff2d55] text-[22px]">videocam</span>
+                <span className="text-[12.5px] font-bold text-zinc-700 dark:text-zinc-300">Video</span>
               </button>
               
               {isGroup && (
-                <button className="flex flex-col items-center justify-center gap-1.5 py-3.5 border border-zinc-200/80 rounded-2xl active:bg-zinc-50 cursor-pointer transition-colors">
-                  <span className="material-symbols-outlined text-[#0b805c] text-[22px]">person_add</span>
-                  <span className="text-[12.5px] font-bold text-zinc-700">Add</span>
+                <button className="flex flex-col items-center justify-center gap-1.5 py-3.5 border border-zinc-200/80 dark:border-zinc-800 rounded-2xl active:bg-zinc-50 dark:active:bg-zinc-900 cursor-pointer transition-colors">
+                  <span className="material-symbols-outlined text-[#0b805c] dark:text-[#ff2d55] text-[22px]">person_add</span>
+                  <span className="text-[12.5px] font-bold text-zinc-700 dark:text-zinc-300">Add</span>
                 </button>
               )}
 
-              <button className="flex flex-col items-center justify-center gap-1.5 py-3.5 border border-zinc-200/80 rounded-2xl active:bg-zinc-50 cursor-pointer transition-colors">
-                <span className="material-symbols-outlined text-[#0b805c] text-[22px]">search</span>
-                <span className="text-[12.5px] font-bold text-zinc-700">Search</span>
+              <button className="flex flex-col items-center justify-center gap-1.5 py-3.5 border border-zinc-200/80 dark:border-zinc-800 rounded-2xl active:bg-zinc-50 dark:active:bg-zinc-900 cursor-pointer transition-colors">
+                <span className="material-symbols-outlined text-[#0b805c] dark:text-[#ff2d55] text-[22px]">search</span>
+                <span className="text-[12.5px] font-bold text-zinc-700 dark:text-zinc-300">Search</span>
               </button>
             </div>
           </div>
 
           {/* Media, links, and docs Section */}
-          <div className="bg-white border-y border-zinc-100 mt-2.5 py-3.5">
+          <div className="bg-white dark:bg-[#0b141a] border-y border-zinc-100 dark:border-zinc-800 mt-2.5 py-3.5">
             <div 
               onClick={handleMediaClick}
               className="flex justify-between items-center px-4 mb-3 cursor-pointer active:opacity-80"
             >
-              <span className="text-[14.5px] font-bold text-[#1c2e35] tracking-wide">Media, links, and docs</span>
+              <span className="text-[14.5px] font-bold text-[#1c2e35] dark:text-[#e9edef] tracking-wide">Media, links, and docs</span>
               <button 
                 onClick={(e) => { e.stopPropagation(); handleMediaClick(); }}
-                className="flex items-center text-zinc-500 font-bold text-[13px] hover:underline cursor-pointer"
+                className="flex items-center text-zinc-500 dark:text-zinc-400 font-bold text-[13px] hover:underline cursor-pointer"
               >
                 {isGroup ? "19" : "774"}
                 <span className="material-symbols-outlined text-[18px] ml-0.5">chevron_right</span>
@@ -228,35 +228,35 @@ export default function ContactProfilePage({ params: paramsPromise }) {
               {isGroup ? (
                 <>
                   {/* Group Media */}
-                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200/50 cursor-pointer hover:opacity-90">
+                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 cursor-pointer hover:opacity-90">
                     <img alt="Receipt" className="w-full h-full object-cover" src="https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=150&fit=crop&q=80" />
                   </div>
-                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200/50 cursor-pointer hover:opacity-90">
+                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 cursor-pointer hover:opacity-90">
                     <img alt="Cleanzo member" className="w-full h-full object-cover" src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&fit=crop&q=80" />
                   </div>
-                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200/50 cursor-pointer hover:opacity-90">
+                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 cursor-pointer hover:opacity-90">
                     <img alt="T-shirt back" className="w-full h-full object-cover" src="https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=150&fit=crop&q=80" />
                   </div>
-                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200/50 cursor-pointer hover:opacity-90">
+                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 cursor-pointer hover:opacity-90">
                     <img alt="Car wash" className="w-full h-full object-cover" src="https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=150&fit=crop&q=80" />
                   </div>
                 </>
               ) : (
                 <>
                   {/* Individual Media */}
-                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200/50 relative flex items-center justify-center cursor-pointer hover:opacity-90">
+                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 relative flex items-center justify-center cursor-pointer hover:opacity-90">
                     <img alt="Thumbnail 1" className="w-full h-full object-cover" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&fit=crop&q=80" />
                     <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                       <span className="material-symbols-outlined text-white text-[28px] fill">play_circle</span>
                     </div>
                   </div>
-                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200/50 cursor-pointer hover:opacity-90">
+                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 cursor-pointer hover:opacity-90">
                     <img alt="Thumbnail 2" className="w-full h-full object-cover" src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=150&fit=crop&q=80" />
                   </div>
-                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200/50 cursor-pointer hover:opacity-90">
+                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 cursor-pointer hover:opacity-90">
                     <img alt="Thumbnail 3" className="w-full h-full object-cover" src="https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=150&fit=crop&q=80" />
                   </div>
-                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200/50 cursor-pointer hover:opacity-90">
+                  <div onClick={handleMediaClick} className="w-[88px] h-[88px] shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 cursor-pointer hover:opacity-90">
                     <img alt="Thumbnail 4" className="w-full h-full object-cover" src="https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&fit=crop&q=80" />
                   </div>
                 </>
@@ -265,62 +265,62 @@ export default function ContactProfilePage({ params: paramsPromise }) {
           </div>
 
           {/* List Options */}
-          <div className="bg-white border-y border-zinc-100 mt-2.5 divide-y divide-zinc-100/60">
+          <div className="bg-white dark:bg-[#0b141a] border-y border-zinc-100 dark:border-zinc-800 mt-2.5 divide-y divide-zinc-100/60 dark:divide-zinc-800/60">
             {/* Manage storage */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
-              <span className="material-symbols-outlined text-zinc-500 mr-4 text-[22px]">folder_open</span>
+            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">folder_open</span>
               <div className="flex-1">
-                <span className="block text-[15px] font-semibold text-[#1c2e35]">Manage storage</span>
-                <span className="block text-[12px] text-zinc-500">{isGroup ? "4.3 MB" : "1.2 GB"}</span>
+                <span className="block text-[15px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">Manage storage</span>
+                <span className="block text-[12px] text-zinc-500 dark:text-zinc-400">{isGroup ? "4.3 MB" : "1.2 GB"}</span>
               </div>
             </div>
 
             {/* Notifications */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
-              <span className="material-symbols-outlined text-zinc-500 mr-4 text-[22px]">notifications</span>
+            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">notifications</span>
               <div className="flex-1">
-                <span className="block text-[15px] font-semibold text-[#1c2e35]">Notifications</span>
+                <span className="block text-[15px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">Notifications</span>
               </div>
             </div>
 
             {/* Media visibility */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
-              <span className="material-symbols-outlined text-zinc-500 mr-4 text-[22px]">image</span>
+            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">image</span>
               <div className="flex-1">
-                <span className="block text-[15px] font-semibold text-[#1c2e35]">Media visibility</span>
+                <span className="block text-[15px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">Media visibility</span>
               </div>
             </div>
           </div>
 
           {/* Options Group 2 */}
-          <div className="bg-white border-y border-zinc-100 mt-2.5 divide-y divide-zinc-100/60">
+          <div className="bg-white dark:bg-[#0b141a] border-y border-zinc-100 dark:border-zinc-800 mt-2.5 divide-y divide-zinc-100/60 dark:divide-zinc-800/60">
             {/* Encryption */}
-            <div className="flex items-start px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
-              <span className="material-symbols-outlined text-zinc-500 mr-4 mt-0.5 text-[22px]">lock</span>
+            <div className="flex items-start px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 mt-0.5 text-[22px]">lock</span>
               <div className="flex-1">
-                <span className="block text-[15px] font-semibold text-[#1c2e35]">Encryption</span>
-                <span className="block text-[12.5px] text-zinc-500 leading-normal mt-0.5">
+                <span className="block text-[15px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">Encryption</span>
+                <span className="block text-[12.5px] text-zinc-500 dark:text-zinc-400 leading-normal mt-0.5">
                   Messages and calls are end-to-end encrypted. {isGroup ? "Tap to learn more." : "Tap to verify."}
                 </span>
               </div>
             </div>
 
             {/* Disappearing messages */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
-              <span className="material-symbols-outlined text-zinc-500 mr-4 text-[22px]">pace</span>
+            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">pace</span>
               <div className="flex-1">
-                <span className="block text-[15px] font-semibold text-[#1c2e35]">Disappearing messages</span>
-                <span className="block text-[12px] text-zinc-500">Off</span>
+                <span className="block text-[15px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">Disappearing messages</span>
+                <span className="block text-[12px] text-zinc-500 dark:text-zinc-400">Off</span>
               </div>
             </div>
 
             {/* Chat Lock toggle */}
-            <div className="flex items-center justify-between px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
+            <div className="flex items-center justify-between px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
               <div className="flex items-center">
-                <span className="material-symbols-outlined text-zinc-500 mr-4 text-[22px]">lock_person</span>
+                <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">lock_person</span>
                 <div>
-                  <span className="block text-[15px] font-semibold text-[#1c2e35]">Chat lock</span>
-                  <span className="block text-[12px] text-zinc-500">Lock and hide this chat on this device.</span>
+                  <span className="block text-[15px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">Chat lock</span>
+                  <span className="block text-[12px] text-zinc-500 dark:text-zinc-400">Lock and hide this chat on this device.</span>
                 </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
@@ -330,25 +330,25 @@ export default function ContactProfilePage({ params: paramsPromise }) {
                   onChange={(e) => setChatLock(e.target.checked)} 
                   className="sr-only peer" 
                 />
-                <div className="w-11 h-6 bg-zinc-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-emerald-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00a884]"></div>
+                <div className="w-11 h-6 bg-zinc-200 dark:bg-zinc-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-emerald-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00a884]"></div>
               </label>
             </div>
 
             {/* Advanced privacy */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
-              <span className="material-symbols-outlined text-zinc-500 mr-4 text-[22px]">shield</span>
+            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">shield</span>
               <div className="flex-1">
-                <span className="block text-[15px] font-semibold text-[#1c2e35]">Advanced chat privacy</span>
-                <span className="block text-[12.5px] text-zinc-500 mt-0.5">Off</span>
+                <span className="block text-[15px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">Advanced chat privacy</span>
+                <span className="block text-[12.5px] text-zinc-500 dark:text-zinc-400 mt-0.5">Off</span>
               </div>
             </div>
 
             {/* Translate messages toggle */}
-            <div className="flex items-center justify-between px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
+            <div className="flex items-center justify-between px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
               <div className="flex items-center">
-                <span className="material-symbols-outlined text-zinc-500 mr-4 text-[22px]">translate</span>
+                <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">translate</span>
                 <div>
-                  <span className="block text-[15px] font-semibold text-[#1c2e35]">Translate messages</span>
+                  <span className="block text-[15px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">Translate messages</span>
                 </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
@@ -358,7 +358,7 @@ export default function ContactProfilePage({ params: paramsPromise }) {
                   onChange={(e) => setTranslateMsg(e.target.checked)} 
                   className="sr-only peer" 
                 />
-                <div className="w-11 h-6 bg-zinc-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-emerald-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00a884]"></div>
+                <div className="w-11 h-6 bg-zinc-200 dark:bg-zinc-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-emerald-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00a884]"></div>
               </label>
             </div>
           </div>
@@ -366,14 +366,14 @@ export default function ContactProfilePage({ params: paramsPromise }) {
           {isGroup ? (
             <>
               {/* Group Creation Link */}
-              <div className="bg-white border-y border-zinc-100 mt-2.5">
-                <div className="flex items-center px-4 py-4 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
+              <div className="bg-white dark:bg-[#0b141a] border-y border-zinc-100 dark:border-zinc-800 mt-2.5">
+                <div className="flex items-center px-4 py-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
                   <div className="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center mr-4">
                     <span className="material-symbols-outlined text-[22px]">groups</span>
                   </div>
                   <div className="flex-1">
-                    <span className="block text-[15px] font-bold text-[#00a884]">Create a similar group</span>
-                    <span className="block text-[12.5px] text-zinc-500 mt-0.5">
+                    <span className="block text-[15px] font-bold text-[#00a884] dark:text-[#ff2d55]">Create a similar group</span>
+                    <span className="block text-[12.5px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                       Start with the same members that you can add or remove.
                     </span>
                   </div>
@@ -381,33 +381,33 @@ export default function ContactProfilePage({ params: paramsPromise }) {
               </div>
 
               {/* Members List */}
-              <div className="bg-white border-y border-zinc-100 mt-2.5 pb-4">
-                <div className="flex justify-between items-center px-4 py-3.5 border-b border-zinc-100/60">
-                  <span className="text-[14.5px] font-bold text-zinc-700">13 members</span>
-                  <button className="w-8 h-8 flex items-center justify-center hover:bg-zinc-100 rounded-full cursor-pointer text-zinc-500">
+              <div className="bg-white dark:bg-[#0b141a] border-y border-zinc-100 dark:border-zinc-800 mt-2.5 pb-4">
+                <div className="flex justify-between items-center px-4 py-3.5 border-b border-zinc-100/60 dark:border-zinc-800/60">
+                  <span className="text-[14.5px] font-bold text-zinc-700 dark:text-zinc-300">13 members</span>
+                  <button className="w-8 h-8 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full cursor-pointer text-zinc-500 dark:text-zinc-400">
                     <span className="material-symbols-outlined text-[20px]">search</span>
                   </button>
                 </div>
 
                 {/* Quick Actions (Green Buttons) */}
                 <div className="flex flex-col mt-1">
-                  <div className="flex items-center px-4 py-3 hover:bg-zinc-50 cursor-pointer">
-                    <div className="w-[42px] h-[42px] rounded-full bg-[#00a884] text-white flex items-center justify-center mr-3.5 shrink-0">
+                  <div className="flex items-center px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer">
+                    <div className="w-[42px] h-[42px] rounded-full bg-[#00a884] dark:bg-[#ff2d55] text-white flex items-center justify-center mr-3.5 shrink-0">
                       <span className="material-symbols-outlined text-[22px]">person_add</span>
                     </div>
-                    <span className="text-[15.5px] font-bold text-zinc-800">Add members</span>
+                    <span className="text-[15.5px] font-bold text-zinc-800 dark:text-zinc-200">Add members</span>
                   </div>
-                  <div className="flex items-center px-4 py-3 hover:bg-zinc-50 cursor-pointer">
-                    <div className="w-[42px] h-[42px] rounded-full bg-[#00a884] text-white flex items-center justify-center mr-3.5 shrink-0">
+                  <div className="flex items-center px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer">
+                    <div className="w-[42px] h-[42px] rounded-full bg-[#00a884] dark:bg-[#ff2d55] text-white flex items-center justify-center mr-3.5 shrink-0">
                       <span className="material-symbols-outlined text-[22px]">link</span>
                     </div>
-                    <span className="text-[15.5px] font-bold text-zinc-800">Invite via link or QR code</span>
+                    <span className="text-[15.5px] font-bold text-zinc-800 dark:text-zinc-200">Invite via link or QR code</span>
                   </div>
-                  <div className="flex items-center px-4 py-3 hover:bg-zinc-50 cursor-pointer">
-                    <div className="w-[42px] h-[42px] rounded-full bg-[#00a884] text-white flex items-center justify-center mr-3.5 shrink-0">
+                  <div className="flex items-center px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer">
+                    <div className="w-[42px] h-[42px] rounded-full bg-[#00a884] dark:bg-[#ff2d55] text-white flex items-center justify-center mr-3.5 shrink-0">
                       <span className="material-symbols-outlined text-[22px]">person_pin</span>
                     </div>
-                    <span className="text-[15.5px] font-bold text-zinc-800">Add members to contacts</span>
+                    <span className="text-[15.5px] font-bold text-zinc-800 dark:text-zinc-200">Add members to contacts</span>
                   </div>
                 </div>
 
@@ -416,19 +416,19 @@ export default function ContactProfilePage({ params: paramsPromise }) {
                   {members.map((member) => (
                     <div 
                       key={member.id}
-                      className="flex items-center px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
+                      className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors cursor-pointer"
                     >
                       <div className="relative shrink-0 mr-3.5">
                         {member.avatar ? (
-                          <div className="w-[44px] h-[44px] rounded-full overflow-hidden border border-zinc-100">
+                          <div className="w-[44px] h-[44px] rounded-full overflow-hidden border border-zinc-100 dark:border-zinc-800">
                             <img alt={member.name} className="w-full h-full object-cover" src={member.avatar} />
                           </div>
                         ) : (
-                          <div className={`w-[44px] h-[44px] rounded-full flex items-center justify-center ${member.avatarBg || "bg-[#dfe5e7] text-[#54656f]"} font-semibold text-sm overflow-hidden`}>
+                          <div className={`w-[44px] h-[44px] rounded-full flex items-center justify-center ${member.avatarBg || "bg-[#dfe5e7] dark:bg-[#202c33] text-[#54656f] dark:text-[#8696a0]"} font-semibold text-sm overflow-hidden`}>
                             {member.isCleanzo ? (
                               <div className="flex flex-col items-center justify-center text-center p-0.5 leading-none">
-                                <span className="text-[6px] font-black uppercase text-emerald-600 leading-none">Cleanzo</span>
-                                <span className="material-symbols-outlined text-[11px] text-emerald-500 fill leading-none mt-0.5">local_car_wash</span>
+                                <span className="text-[6px] font-black uppercase text-emerald-600 dark:text-[#ff2d55] leading-none">Cleanzo</span>
+                                <span className="material-symbols-outlined text-[11px] text-emerald-500 dark:text-[#ff2d55] fill leading-none mt-0.5">local_car_wash</span>
                               </div>
                             ) : (
                               <span>{member.avatarText}</span>
@@ -439,18 +439,18 @@ export default function ContactProfilePage({ params: paramsPromise }) {
 
                       <div className="flex-1 min-w-0 flex items-center justify-between">
                         <div className="flex flex-col min-w-0">
-                          <span className="text-[15px] font-bold text-[#1c2e35] truncate tracking-wide">
+                          <span className="text-[15px] font-bold text-[#1c2e35] dark:text-[#e9edef] truncate tracking-wide">
                             {member.name}
                           </span>
                           {member.subtext && (
-                            <span className="text-[12px] text-zinc-500 truncate mt-0.5">
+                            <span className="text-[12px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
                               {member.subtext}
                             </span>
                           )}
                         </div>
 
                         {member.isAdmin && (
-                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200/50 px-2 py-0.5 rounded-[4px] shrink-0 uppercase tracking-wide">
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-[#ff2d55] bg-emerald-50 dark:bg-[#ff2d55]/10 border border-emerald-200/50 dark:border-[#ff2d55]/20 px-2 py-0.5 rounded-[4px] shrink-0 uppercase tracking-wide">
                             Group Admin
                           </span>
                         )}
@@ -458,7 +458,7 @@ export default function ContactProfilePage({ params: paramsPromise }) {
                     </div>
                   ))}
 
-                  <button className="text-left px-4 py-2.5 text-[#00a884] font-bold text-[14.5px] hover:underline cursor-pointer">
+                  <button className="text-left px-4 py-2.5 text-[#00a884] dark:text-[#ff2d55] font-bold text-[14.5px] hover:underline cursor-pointer">
                     View all (3 more)
                   </button>
                 </div>
@@ -467,24 +467,24 @@ export default function ContactProfilePage({ params: paramsPromise }) {
           ) : (
             <>
               {/* Groups in Common (Kittu / Individual) */}
-              <div className="bg-white border-y border-zinc-100 mt-2.5 pb-2">
-                <div className="px-4 py-3.5 border-b border-zinc-100/60">
-                  <span className="text-[14px] font-bold text-zinc-500 tracking-wide">No groups in common</span>
+              <div className="bg-white dark:bg-[#0b141a] border-y border-zinc-100 dark:border-zinc-800 mt-2.5 pb-2">
+                <div className="px-4 py-3.5 border-b border-zinc-100/60 dark:border-zinc-800/60">
+                  <span className="text-[14px] font-bold text-zinc-500 dark:text-zinc-400 tracking-wide">No groups in common</span>
                 </div>
                 <div className="flex flex-col mt-2">
-                  <div className="flex items-center px-4 py-3 hover:bg-zinc-50 cursor-pointer">
-                    <div className="w-[42px] h-[42px] rounded-full bg-[#00a884] text-white flex items-center justify-center mr-3.5 shrink-0">
+                  <div className="flex items-center px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer">
+                    <div className="w-[42px] h-[42px] rounded-full bg-[#00a884] dark:bg-[#ff2d55] text-white flex items-center justify-center mr-3.5 shrink-0">
                       <span className="material-symbols-outlined text-[22px]">groups</span>
                     </div>
-                    <span className="text-[15.5px] font-bold text-zinc-800">Create group with Kittu</span>
+                    <span className="text-[15.5px] font-bold text-zinc-800 dark:text-zinc-200">Create group with Kittu</span>
                   </div>
-                  <div className="flex items-start px-4 py-3 hover:bg-zinc-50 cursor-pointer">
-                    <div className="w-[42px] h-[42px] rounded-full bg-[#00a884] text-white flex items-center justify-center mr-3.5 shrink-0 mt-0.5">
+                  <div className="flex items-start px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer">
+                    <div className="w-[42px] h-[42px] rounded-full bg-[#00a884] dark:bg-[#ff2d55] text-white flex items-center justify-center mr-3.5 shrink-0 mt-0.5">
                       <span className="material-symbols-outlined text-[22px]">group_add</span>
                     </div>
                     <div>
-                      <span className="block text-[15.5px] font-bold text-zinc-800">Add to groups</span>
-                      <span className="block text-[12.5px] text-zinc-500 mt-0.5">Add this contact to groups you're in.</span>
+                      <span className="block text-[15.5px] font-bold text-zinc-800 dark:text-zinc-200">Add to groups</span>
+                      <span className="block text-[12.5px] text-zinc-500 dark:text-zinc-400 mt-0.5">Add this contact to groups you're in.</span>
                     </div>
                   </div>
                 </div>
@@ -493,34 +493,34 @@ export default function ContactProfilePage({ params: paramsPromise }) {
           )}
 
           {/* Action List Section 3 */}
-          <div className="bg-white border-y border-zinc-100 mt-2.5 divide-y divide-zinc-100/60">
+          <div className="bg-white dark:bg-[#0b141a] border-y border-zinc-100 dark:border-zinc-800 mt-2.5 divide-y divide-zinc-100/60 dark:divide-zinc-800/60">
             {isGroup && (
-              <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
-                <span className="material-symbols-outlined text-zinc-500 mr-4 text-[22px]">format_list_bulleted</span>
-                <span className="text-[15px] font-bold text-zinc-700">View member changes</span>
+              <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+                <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">format_list_bulleted</span>
+                <span className="text-[15px] font-bold text-zinc-700 dark:text-zinc-300">View member changes</span>
               </div>
             )}
 
             {/* Add to Favourites */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
-              <span className="material-symbols-outlined text-zinc-500 mr-4 text-[22px]">favorite_border</span>
-              <span className="text-[15px] font-bold text-zinc-700">Add to Favourites</span>
+            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">favorite_border</span>
+              <span className="text-[15px] font-bold text-zinc-700 dark:text-zinc-300">Add to Favourites</span>
             </div>
 
             {/* Add to list */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
-              <span className="material-symbols-outlined text-zinc-500 mr-4 text-[22px]">label</span>
-              <span className="text-[15px] font-bold text-zinc-700">Add to list</span>
+            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">label</span>
+              <span className="text-[15px] font-bold text-zinc-700 dark:text-zinc-300">Add to list</span>
             </div>
 
             {/* Clear chat */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 cursor-pointer">
-              <span className="material-symbols-outlined text-zinc-500 mr-4 text-[22px]">block</span>
-              <span className="text-[15px] font-bold text-zinc-700">Clear chat</span>
+            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">block</span>
+              <span className="text-[15px] font-bold text-zinc-700 dark:text-zinc-300">Clear chat</span>
             </div>
 
             {/* Block / Exit */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-red-50/50 active:bg-red-100/30 cursor-pointer text-red-500">
+            <div className="flex items-center px-4 py-3.5 hover:bg-red-50/50 dark:hover:bg-red-950/20 active:bg-red-100/30 dark:active:bg-red-900/30 cursor-pointer text-red-500">
               <span className="material-symbols-outlined mr-4 text-[22px]">
                 {isGroup ? "logout" : "block"}
               </span>
@@ -530,7 +530,7 @@ export default function ContactProfilePage({ params: paramsPromise }) {
             </div>
 
             {/* Report */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-red-50/50 active:bg-red-100/30 cursor-pointer text-red-500">
+            <div className="flex items-center px-4 py-3.5 hover:bg-red-50/50 dark:hover:bg-red-950/20 active:bg-red-100/30 dark:active:bg-red-900/30 cursor-pointer text-red-500">
               <span className="material-symbols-outlined mr-4 text-[22px]">thumb_down</span>
               <span className="text-[15px] font-bold">
                 {isGroup ? "Report group" : "Report Kittu"}
