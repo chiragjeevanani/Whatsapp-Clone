@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, useTransform } from "framer-motion";
 
-export default function Navigation({ activeTab }) {
+export default function Navigation({ activeTab, dragX, width, onTabChange }) {
   const router = useRouter();
 
   const tabs = [
@@ -14,6 +14,17 @@ export default function Navigation({ activeTab }) {
   ];
 
   const activeIndex = tabs.findIndex((t) => t.id === activeTab);
+
+  // Transform page drag offset to active tab index fractionally
+  const fractionalIndex = useTransform(dragX || { get: () => 0 }, (val) => {
+    if (!width) return activeIndex !== -1 ? activeIndex : 0;
+    return -val / width;
+  });
+
+  // Calculate the continuous percentage position of the pill
+  const pillLeft = useTransform(fractionalIndex, (index) => {
+    return `calc(${index * 25}% + 12.5% - 32px)`;
+  });
 
   return (
     <nav className="fixed bottom-0 w-full z-50 bg-white dark:bg-[#111b21] border-t border-zinc-100 dark:border-[#222d34] pb-safe shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
@@ -26,7 +37,7 @@ export default function Navigation({ activeTab }) {
             className="absolute h-8 bg-[#e6f5ef] dark:bg-[#ff2d55] rounded-full z-0 pointer-events-none"
             style={{
               width: "64px",
-              left: `calc(${activeIndex * 25}% + 12.5% - 32px)`,
+              left: dragX ? pillLeft : `calc(${activeIndex * 25}% + 12.5% - 32px)`,
               top: "12.5px",
             }}
             transition={{
@@ -43,7 +54,13 @@ export default function Navigation({ activeTab }) {
           return (
             <button
               key={tab.id}
-              onClick={() => router.push(tab.path)}
+              onClick={() => {
+                if (onTabChange) {
+                  onTabChange(idx);
+                } else {
+                  router.push(tab.path);
+                }
+              }}
               aria-label={`${tab.label} tab${isActive ? ", active" : ""}`}
               className="group flex flex-col items-center justify-center flex-1 h-full focus:outline-none hover:cursor-pointer relative z-10"
             >

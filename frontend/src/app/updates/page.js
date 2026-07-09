@@ -1,16 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navigation from "@/components/Navigation";
 
 export default function UpdatesPage() {
+  const router = useRouter();
   const [following, setFollowing] = useState({ sarkari: false, gemini: false, flipkart: false });
   const [activeStatus, setActiveStatus] = useState(null);
   const [activeChannel, setActiveChannel] = useState(null);
   const [activeSuggestedChannel, setActiveSuggestedChannel] = useState(null);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   
   const [replyText, setReplyText] = useState("");
   const [progress, setProgress] = useState(0);
+
+  // Create Channel Wizard states
+  const [channelFlowStep, setChannelFlowStep] = useState(null);
+  const [newChannelName, setNewChannelName] = useState("");
+  const [newChannelDesc, setNewChannelDesc] = useState("");
+  const [createdChannel, setCreatedChannel] = useState(null);
+  const [userCreatedChannels, setUserCreatedChannels] = useState([]);
+  const [selectedContacts, setSelectedContacts] = useState({});
   
   // Poll State
   const [pollVotes, setPollVotes] = useState({ yes: 1, no: 5 });
@@ -19,6 +30,24 @@ export default function UpdatesPage() {
   const toggleFollow = (channel) => {
     setFollowing((prev) => ({ ...prev, [channel]: !prev[channel] }));
   };
+
+  useEffect(() => {
+    const shouldHide = !!(activeChannel || activeStatus || activeSuggestedChannel || channelFlowStep);
+    window.dispatchEvent(new CustomEvent("hide-bottom-nav", { detail: shouldHide }));
+    return () => {
+      window.dispatchEvent(new CustomEvent("hide-bottom-nav", { detail: false }));
+    };
+  }, [activeChannel, activeStatus, activeSuggestedChannel, channelFlowStep]);
+
+  // Success popup auto-advance timer
+  useEffect(() => {
+    if (channelFlowStep === "success") {
+      const timer = setTimeout(() => {
+        setChannelFlowStep("invite");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [channelFlowStep]);
 
   const statusCards = [
     {
@@ -159,7 +188,7 @@ export default function UpdatesPage() {
   // 1. RENDER FULL SCREEN STATUS VIEWER
   if (activeStatus) {
     return (
-      <div className="fixed inset-0 bg-black z-50 flex flex-col font-sans select-none justify-between h-screen overflow-hidden">
+      <div className="absolute inset-0 bg-black z-50 flex flex-col font-sans select-none justify-between h-screen overflow-hidden">
         <div className="w-full px-2.5 pt-3.5 flex gap-1">
           <div className="h-[2.5px] bg-[#8696a0]/40 flex-1 rounded-full overflow-hidden">
             <div
@@ -250,7 +279,7 @@ export default function UpdatesPage() {
   // 2. RENDER FULL SCREEN CHANNEL DETAIL VIEW (JOINED CHANNELS)
   if (activeChannel) {
     return (
-      <div className="fixed inset-0 bg-[#efeae2] text-[#1c2e35] z-50 flex flex-col font-sans overflow-hidden h-screen select-none">
+      <div className="absolute inset-0 bg-[#efeae2] text-[#1c2e35] z-50 flex flex-col font-sans overflow-hidden h-screen select-none">
         <header className="bg-white flex justify-between items-center h-[60px] px-2.5 shrink-0 border-b border-zinc-100 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
           <div className="flex items-center gap-1.5 overflow-hidden max-w-[75%]">
             <button
@@ -296,109 +325,123 @@ export default function UpdatesPage() {
 
         <div className="flex-1 overflow-hidden relative chat-bg bg-cover bg-center">
           <main className="absolute inset-0 overflow-y-auto px-4 py-4 space-y-5 no-scrollbar pb-20">
-            
-            <div className="flex flex-col items-start w-full">
-              <div className="bg-white text-[#111b21] rounded-[12px] shadow-[0_1px_1.5px_rgba(0,0,0,0.12)] p-3 pb-6 max-w-[90%] md:max-w-[70%] rounded-tl-[2px] relative select-text">
-                <p className="font-bold text-[14.5px] mb-1">Share 5 product links daily for 10 days</p>
-                <p className="text-[14px] mb-3">Open all shared links one by one</p>
-
-                <p className="font-bold text-[14.5px] mb-1">Tracking 🥰</p>
-                <p className="text-[14px] mb-3">Brand will track engagement & performance via links</p>
-
-                <p className="font-bold text-[14.5px] mb-1">Focus</p>
-                <p className="text-[14px] mb-0.5">Product discovery</p>
-                <p className="text-[14px] mb-3">Affiliate-driven content</p>
-
-                <p className="font-bold text-[14.5px] mb-3">Important</p>
-
-                <p className="font-bold text-[14.5px] mb-3">Participation implies consent for performance tracking</p>
-
-                <p className="text-[14px] mb-3"><span className="font-bold">Wishlink URLs</span> (single time click only)</p>
-
-                <div className="flex flex-col gap-1.5 text-blue-600 text-[14px] underline font-medium">
-                  <a href="#" className="hover:text-blue-800 break-all">https://www.wishlink.com/share/ncprvj</a>
-                  <a href="#" className="hover:text-blue-800 break-all">https://www.wishlink.com/share/nwmhjq</a>
-                  <a href="#" className="hover:text-blue-800 break-all">https://www.wishlink.com/share/n5m47t</a>
-                  <a href="#" className="hover:text-blue-800 break-all">https://www.wishlink.com/share/newe46</a>
-                  <a href="#" className="hover:text-blue-800 break-all">https://www.wishlink.com/share/n8vt6c</a>
+            {activeChannel.id.startsWith("user-channel-") ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center text-[#667781] dark:text-zinc-400 mt-20">
+                <div className="w-16 h-16 rounded-full bg-[#00a884]/10 text-[#00a884] flex items-center justify-center mb-4">
+                  <span className="material-symbols-outlined text-[32px] fill">campaign</span>
                 </div>
-
-                <div className="absolute bottom-1 right-2 flex items-center select-none">
-                  <span className="text-[10.5px] text-[#667781] font-medium leading-none">09:41</span>
-                </div>
-              </div>
-              
-              <button className="bg-white/90 text-[#54656f] rounded-full w-8 h-8 flex items-center justify-center cursor-pointer shadow-md ml-2 mt-1.5 active:scale-90 transition-transform">
-                <span className="material-symbols-outlined text-[18px] font-bold">reply</span>
-              </button>
-            </div>
-
-            <div className="flex flex-col items-start w-full">
-              <div className="bg-white text-[#111b21] rounded-[12px] shadow-[0_1px_1.5px_rgba(0,0,0,0.12)] p-3 pb-6 max-w-[90%] md:max-w-[70%] rounded-tl-[2px] relative select-text">
-                <p className="text-[14px] leading-relaxed">
-                  Savana 1 rs sale <a href="#" className="text-blue-600 underline break-all">https://www.instagram.com/reel/DY6r4P6yqTC/?utm_source=ig_web_copy_link</a>
+                <h3 className="text-[17px] font-bold text-[#111b21] dark:text-white mb-2">Welcome to {activeChannel.name}</h3>
+                <p className="text-[13.5px] leading-relaxed max-w-[260px]">
+                  {activeChannel.message}
                 </p>
-                <p className="text-[14.2px] font-bold mt-1.5 leading-relaxed">
-                  comment how for tricks last time ke tarah galati mt krna
-                </p>
-                
-                <div className="absolute bottom-1 right-2 flex items-center select-none">
-                  <span className="text-[10.5px] text-[#667781] font-medium leading-none">14:49</span>
-                </div>
+                <span className="text-[11px] text-zinc-400 font-semibold mt-4">Created {activeChannel.time}</span>
               </div>
-              
-              <button className="bg-white/90 text-[#54656f] rounded-full w-8 h-8 flex items-center justify-center cursor-pointer shadow-md ml-2 mt-1.5 active:scale-90 transition-transform">
-                <span className="material-symbols-outlined text-[18px] font-bold">reply</span>
-              </button>
-            </div>
+            ) : (
+              <>
+                <div className="flex flex-col items-start w-full">
+                  <div className="bg-white text-[#111b21] rounded-[12px] shadow-[0_1px_1.5px_rgba(0,0,0,0.12)] p-3 pb-6 max-w-[90%] md:max-w-[70%] rounded-tl-[2px] relative select-text">
+                    <p className="font-bold text-[14.5px] mb-1">Share 5 product links daily for 10 days</p>
+                    <p className="text-[14px] mb-3">Open all shared links one by one</p>
 
-            <div className="flex flex-col items-start w-full">
-              <div className="bg-white text-[#111b21] rounded-[12px] shadow-[0_1px_1.5px_rgba(0,0,0,0.12)] p-4 max-w-[90%] md:max-w-[70%] rounded-tl-[2px] w-full relative">
-                <div className="mb-3.5">
-                  <h4 className="text-[15.5px] font-bold text-[#1c2e35] leading-tight">Apka order hua</h4>
-                  <div className="flex items-center gap-1 text-[#667781] text-[12px] font-medium mt-1">
-                    <span className="material-symbols-outlined text-[16px] font-bold">check_box</span>
-                    <span>Select one or more</span>
+                    <p className="font-bold text-[14.5px] mb-1">Tracking 🥰</p>
+                    <p className="text-[14px] mb-3">Brand will track engagement & performance via links</p>
+
+                    <p className="font-bold text-[14.5px] mb-1">Focus</p>
+                    <p className="text-[14px] mb-0.5">Product discovery</p>
+                    <p className="text-[14px] mb-3">Affiliate-driven content</p>
+
+                    <p className="font-bold text-[14.5px] mb-3">Important</p>
+
+                    <p className="font-bold text-[14.5px] mb-3">Participation implies consent for performance tracking</p>
+
+                    <p className="text-[14px] mb-3"><span className="font-bold">Wishlink URLs</span> (single time click only)</p>
+
+                    <div className="flex flex-col gap-1.5 text-blue-600 text-[14px] underline font-medium">
+                      <a href="#" className="hover:text-blue-800 break-all">https://www.wishlink.com/share/ncprvj</a>
+                      <a href="#" className="hover:text-blue-800 break-all">https://www.wishlink.com/share/nwmhjq</a>
+                      <a href="#" className="hover:text-blue-800 break-all">https://www.wishlink.com/share/n5m47t</a>
+                      <a href="#" className="hover:text-blue-800 break-all">https://www.wishlink.com/share/newe46</a>
+                      <a href="#" className="hover:text-blue-800 break-all">https://www.wishlink.com/share/n8vt6c</a>
+                    </div>
+
+                    <div className="absolute bottom-1 right-2 flex items-center select-none">
+                      <span className="text-[10.5px] text-[#667781] font-medium leading-none">09:41</span>
+                    </div>
                   </div>
+                  
+                  <button className="bg-white/90 text-[#54656f] rounded-full w-8 h-8 flex items-center justify-center cursor-pointer shadow-md ml-2 mt-1.5 active:scale-90 transition-transform">
+                    <span className="material-symbols-outlined text-[18px] font-bold">reply</span>
+                  </button>
                 </div>
 
-                <div className="space-y-4">
-                  <div onClick={() => handlePollVote("yes")} className="flex flex-col cursor-pointer group">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                          selectedPollOption === "yes" ? "border-[#00a884] bg-[#00a884] text-white" : "border-zinc-300 group-hover:border-zinc-400"
-                        }`}>
-                          {selectedPollOption === "yes" && <span className="material-symbols-outlined text-[12px] font-extrabold">check</span>}
-                        </div>
-                        <span className="text-[14.5px] font-semibold text-[#1c2e35]">Yes</span>
-                      </div>
-                      <span className="text-[13px] font-bold text-[#667781]">{pollVotes.yes}</span>
-                    </div>
-                    <div className="h-[7px] w-full bg-[#f0f2f5] rounded-full overflow-hidden">
-                      <div className="h-full bg-[#00a884] rounded-full transition-all duration-300" style={{ width: `${yesPercentage}%` }}></div>
+                <div className="flex flex-col items-start w-full">
+                  <div className="bg-white text-[#111b21] rounded-[12px] shadow-[0_1px_1.5px_rgba(0,0,0,0.12)] p-3 pb-6 max-w-[90%] md:max-w-[70%] rounded-tl-[2px] relative select-text">
+                    <p className="text-[14px] leading-relaxed">
+                      Savana 1 rs sale <a href="#" className="text-blue-600 underline break-all">https://www.instagram.com/reel/DY6r4P6yqTC/?utm_source=ig_web_copy_link</a>
+                    </p>
+                    <p className="text-[14.2px] font-bold mt-1.5 leading-relaxed">
+                      comment how for tricks last time ke tarah galati mt krna
+                    </p>
+                    
+                    <div className="absolute bottom-1 right-2 flex items-center select-none">
+                      <span className="text-[10.5px] text-[#667781] font-medium leading-none">14:49</span>
                     </div>
                   </div>
+                  
+                  <button className="bg-white/90 text-[#54656f] rounded-full w-8 h-8 flex items-center justify-center cursor-pointer shadow-md ml-2 mt-1.5 active:scale-90 transition-transform">
+                    <span className="material-symbols-outlined text-[18px] font-bold">reply</span>
+                  </button>
+                </div>
 
-                  <div onClick={() => handlePollVote("no")} className="flex flex-col cursor-pointer group">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                          selectedPollOption === "no" ? "border-[#00a884] bg-[#00a884] text-white" : "border-zinc-300 group-hover:border-zinc-400"
-                        }`}>
-                          {selectedPollOption === "no" && <span className="material-symbols-outlined text-[12px] font-extrabold">check</span>}
-                        </div>
-                        <span className="text-[14.5px] font-semibold text-[#1c2e35]">No</span>
+                <div className="flex flex-col items-start w-full">
+                  <div className="bg-white text-[#111b21] rounded-[12px] shadow-[0_1px_1.5px_rgba(0,0,0,0.12)] p-4 max-w-[90%] md:max-w-[70%] rounded-tl-[2px] w-full relative">
+                    <div className="mb-3.5">
+                      <h4 className="text-[15.5px] font-bold text-[#1c2e35] leading-tight">Apka order hua</h4>
+                      <div className="flex items-center gap-1 text-[#667781] text-[12px] font-medium mt-1">
+                        <span className="material-symbols-outlined text-[16px] font-bold">check_box</span>
+                        <span>Select one or more</span>
                       </div>
-                      <span className="text-[13px] font-bold text-[#667781]">{pollVotes.no}</span>
                     </div>
-                    <div className="h-[7px] w-full bg-[#f0f2f5] rounded-full overflow-hidden">
-                      <div className="h-full bg-[#00a884] rounded-full transition-all duration-300" style={{ width: `${noPercentage}%` }}></div>
+
+                    <div className="space-y-4">
+                      <div onClick={() => handlePollVote("yes")} className="flex flex-col cursor-pointer group">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                              selectedPollOption === "yes" ? "border-[#00a884] bg-[#00a884] text-white" : "border-zinc-300 group-hover:border-zinc-400"
+                            }`}>
+                              {selectedPollOption === "yes" && <span className="material-symbols-outlined text-[12px] font-extrabold">check</span>}
+                            </div>
+                            <span className="text-[14.5px] font-semibold text-[#1c2e35]">Yes</span>
+                          </div>
+                          <span className="text-[13px] font-bold text-[#667781]">{pollVotes.yes}</span>
+                        </div>
+                        <div className="h-[7px] w-full bg-[#f0f2f5] rounded-full overflow-hidden">
+                          <div className="h-full bg-[#00a884] rounded-full transition-all duration-300" style={{ width: `${yesPercentage}%` }}></div>
+                        </div>
+                      </div>
+
+                      <div onClick={() => handlePollVote("no")} className="flex flex-col cursor-pointer group">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                              selectedPollOption === "no" ? "border-[#00a884] bg-[#00a884] text-white" : "border-zinc-300 group-hover:border-zinc-400"
+                            }`}>
+                              {selectedPollOption === "no" && <span className="material-symbols-outlined text-[12px] font-extrabold">check</span>}
+                            </div>
+                            <span className="text-[14.5px] font-semibold text-[#1c2e35]">No</span>
+                          </div>
+                          <span className="text-[13px] font-bold text-[#667781]">{pollVotes.no}</span>
+                        </div>
+                        <div className="h-[7px] w-full bg-[#f0f2f5] rounded-full overflow-hidden">
+                          <div className="h-full bg-[#00a884] rounded-full transition-all duration-300" style={{ width: `${noPercentage}%` }}></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </main>
 
           <div className="absolute bottom-4 right-4 z-45">
@@ -414,7 +457,7 @@ export default function UpdatesPage() {
   // 3. RENDER FULL SCREEN SUGGESTED CHANNEL VIEW (NOT YET JOINED)
   if (activeSuggestedChannel) {
     return (
-      <div className="fixed inset-0 bg-[#efeae2] text-[#1c2e35] z-50 flex flex-col font-sans overflow-hidden h-screen select-none">
+      <div className="absolute inset-0 bg-[#efeae2] text-[#1c2e35] z-50 flex flex-col font-sans overflow-hidden h-screen select-none">
         {/* Header */}
         <header className="bg-white flex justify-between items-center h-[60px] px-2.5 shrink-0 border-b border-zinc-100 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
           <div className="flex items-center gap-1.5 overflow-hidden max-w-[75%]">
@@ -559,9 +602,327 @@ export default function UpdatesPage() {
     );
   }
 
+  // ==========================================
+  // CREATE CHANNEL FLOW STEP 1: INTRO Bottom Sheet
+  // ==========================================
+  if (channelFlowStep === "intro") {
+    return (
+      <div className="absolute inset-0 bg-black/45 z-50 flex flex-col justify-end font-sans select-none">
+        <div className="flex-1" onClick={() => setChannelFlowStep(null)} />
+        <div className="bg-white dark:bg-[#1f2c34] rounded-t-[24px] w-full pb-8 pt-4 px-6 flex flex-col relative animate-in slide-in-from-bottom duration-300">
+          <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto mb-6 shrink-0" />
+          
+          <div className="flex justify-center mb-6">
+            <svg width="140" height="100" viewBox="0 0 140 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M40 30C36 36 34 43 34 50C34 57 36 64 40 70" stroke="#00a884" strokeWidth="3" strokeLinecap="round"/>
+              <path d="M30 22C24 30 21 40 21 50C21 60 24 70 30 78" stroke="#00a884" strokeWidth="3" strokeLinecap="round" opacity="0.6"/>
+              <path d="M20 15C12 25 8 37 8 50C8 63 12 75 20 85" stroke="#00a884" strokeWidth="3" strokeLinecap="round" opacity="0.3"/>
+
+              <path d="M55 50C55 41.7 61.7 35 70 35C78.3 35 85 41.7 85 50C85 58.3 78.3 65 70 65C67.5 65 65.2 64.4 63.2 63.3L54 66L56.7 57.8C55.6 55.8 55 53 55 50Z" fill="#25d366" stroke="#128c7e" strokeWidth="3" strokeLinejoin="round"/>
+              <circle cx="70" cy="50" r="3" fill="#128c7e"/>
+              <path d="M66 46C64 48 64 52 66 54" stroke="#128c7e" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M74 46C76 48 76 52 74 54" stroke="#128c7e" strokeWidth="2" strokeLinecap="round"/>
+
+              <path d="M100 30C104 36 106 43 106 50C106 57 104 64 100 70" stroke="#00a884" strokeWidth="3" strokeLinecap="round"/>
+              <path d="M110 22C116 30 119 40 119 50C119 60 116 70 110 78" stroke="#00a884" strokeWidth="3" strokeLinecap="round" opacity="0.6"/>
+              <path d="M120 15C128 25 132 37 132 50C132 63 128 75 120 85" stroke="#00a884" strokeWidth="3" strokeLinecap="round" opacity="0.3"/>
+            </svg>
+          </div>
+
+          <h2 className="text-[20px] font-bold text-center text-[#111b21] dark:text-zinc-100 leading-snug mb-7 px-4">
+            Create a channel to reach unlimited followers
+          </h2>
+
+          <div className="flex flex-col gap-6 mb-8 text-[#111b21] dark:text-zinc-300">
+            <div className="flex items-start gap-4">
+              <span className="material-symbols-outlined text-[24px] text-[#00a884] shrink-0 mt-0.5">language</span>
+              <div className="flex flex-col">
+                <span className="text-[15px] font-bold">Anyone can discover your channel</span>
+                <span className="text-[13.5px] text-[#667781] dark:text-zinc-400 mt-0.5 leading-relaxed">
+                  Channels are public, so anyone can find them and see 30 days of history.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <span className="material-symbols-outlined text-[24px] text-[#00a884] shrink-0 mt-0.5">visibility_off</span>
+              <div className="flex flex-col">
+                <span className="text-[15px] font-bold">People see your channel, not you</span>
+                <span className="text-[13.5px] text-[#667781] dark:text-zinc-400 mt-0.5 leading-relaxed">
+                  Followers can't see your phone number, profile picture or name, but other admins can.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <span className="material-symbols-outlined text-[24px] text-[#00a884] shrink-0 mt-0.5">verified_user</span>
+              <div className="flex flex-col">
+                <span className="text-[15px] font-bold">You're responsible for your channel</span>
+                <span className="text-[13.5px] text-[#667781] dark:text-zinc-400 mt-0.5 leading-relaxed">
+                  Your channel needs to follow our <span className="text-blue-600 font-bold hover:underline cursor-pointer">guidelines</span> and is reviewed against them.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => setChannelFlowStep("form")}
+            className="w-full py-3.5 bg-[#00a884] hover:bg-[#008f70] text-white rounded-full font-bold text-[15px] transition-colors shadow-md active:scale-98 cursor-pointer"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // CREATE CHANNEL FLOW STEP 2: FORM Screen
+  // ==========================================
+  if (channelFlowStep === "form") {
+    return (
+      <div className="absolute inset-0 bg-white dark:bg-[#0b141a] z-50 flex flex-col font-sans select-none justify-between h-full">
+        <div className="w-full flex-col flex-grow pb-10">
+          <header className="px-4 py-3 flex items-center bg-white dark:bg-[#0b141a] shrink-0 sticky top-0 z-40 border-b border-zinc-100 dark:border-zinc-800 justify-between">
+            <div className="flex items-center">
+              <button 
+                onClick={() => setChannelFlowStep("intro")}
+                className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full active:scale-95 transition-transform text-[#1c2e35] dark:text-white cursor-pointer"
+                aria-label="Back"
+              >
+                <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+              </button>
+              <h2 className="text-[19px] font-bold ml-4 text-[#111b21] dark:text-zinc-100">Create channel</h2>
+            </div>
+          </header>
+
+          <main className="flex-1 px-6 pt-8 flex flex-col items-center max-w-md mx-auto w-full">
+            <div className="relative mb-8 cursor-pointer active:opacity-90">
+              <div className="w-28 h-28 rounded-full bg-[#dfe5e7] dark:bg-zinc-800 flex items-center justify-center text-[#54656f] dark:text-zinc-400">
+                <span className="material-symbols-outlined text-[54px]">campaign</span>
+              </div>
+              <div className="absolute bottom-0 right-0 bg-[#00a884] text-white rounded-full w-9 h-9 flex items-center justify-center border-2 border-white dark:border-[#0b141a] shadow-sm">
+                <span className="material-symbols-outlined text-[19px]">photo_camera</span>
+              </div>
+            </div>
+
+            <div className="w-full flex flex-col gap-6">
+              <div className="flex flex-col gap-1 border-b border-zinc-200 dark:border-zinc-700 py-1.5 focus-within:border-[#00a884] transition-colors">
+                <input 
+                  type="text" 
+                  value={newChannelName}
+                  onChange={(e) => setNewChannelName(e.target.value)}
+                  placeholder="Channel name"
+                  className="w-full bg-transparent border-none outline-none focus:outline-none text-[16px] text-[#111b21] dark:text-zinc-100 placeholder-zinc-400"
+                  required
+                />
+              </div>
+
+              <div className="bg-[#f0f2f5] dark:bg-[#1f2c34] rounded-2xl p-4 flex flex-col">
+                <textarea 
+                  value={newChannelDesc}
+                  onChange={(e) => setNewChannelDesc(e.target.value)}
+                  placeholder="Describe your channel. Including a description is useful for your followers."
+                  rows={4}
+                  className="w-full bg-transparent border-none outline-none focus:outline-none text-[14.5px] text-[#111b21] dark:text-zinc-200 placeholder-zinc-500 resize-none leading-relaxed"
+                />
+              </div>
+            </div>
+          </main>
+        </div>
+
+        <div className="p-6 bg-white dark:bg-[#0b141a] border-t border-zinc-100 dark:border-zinc-800">
+          <button 
+            disabled={!newChannelName.trim()}
+            onClick={() => {
+              const newChan = {
+                id: "user-channel-" + Date.now(),
+                name: newChannelName,
+                followers: "0 followers",
+                avatarBg: "bg-emerald-50 text-emerald-600 border border-emerald-100 dark:border-emerald-800/20 dark:bg-emerald-950/20",
+                avatarIcon: "campaign",
+                message: newChannelDesc.trim() || "No description.",
+                time: "Just now",
+                unread: 0
+              };
+              setCreatedChannel(newChan);
+              setChannelFlowStep("success");
+            }}
+            className={`w-full py-3.5 text-white rounded-full font-bold text-[15px] transition-all shadow-md active:scale-98 cursor-pointer ${
+              newChannelName.trim() ? "bg-[#00a884] hover:bg-[#008f70]" : "bg-zinc-300 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
+            }`}
+          >
+            Create channel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // CREATE CHANNEL FLOW STEP 3 & 4: SUCCESS and INVITE List Screen
+  // ==========================================
+  if (channelFlowStep === "success" || channelFlowStep === "invite") {
+    const contactsData = [
+      { id: "swaanniiyaaaa", name: "Swaanniiyaaaa🕊️ ✨✨✨", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "aditi", name: "Aditi", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "appzeto-hr", name: "appzeto hr Sir", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "kittu", name: "Kittu", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "ankit-sir", name: "Ankit sir appzeto", avatar: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "vini-sage", name: "Vini Sage", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "ujjawal", name: "Ujjawal appzeto", sub: "If it is textable then text, Don't call!", avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "c8547", name: "******8547", avatar: null, type: "whatsapp" },
+      { id: "phone1", name: "+91 95105 91925", avatar: null, type: "whatsapp" },
+      { id: "phone2", name: "+919510591925", avatar: null, type: "whatsapp" },
+      { id: "mahi", name: "~Mahi Tanpure Sage", avatar: null, type: "whatsapp" },
+      { id: "c1111", name: "1111", avatar: null, type: "whatsapp" },
+    ];
+
+    const toggleContactSelect = (contactId) => {
+      setSelectedContacts(prev => ({
+        ...prev,
+        [contactId]: !prev[contactId]
+      }));
+    };
+
+    const selectedCount = Object.values(selectedContacts).filter(Boolean).length;
+
+    const handleFinishFlow = () => {
+      if (createdChannel) {
+        setUserCreatedChannels([createdChannel, ...userCreatedChannels]);
+      }
+      setChannelFlowStep(null);
+      setNewChannelName("");
+      setNewChannelDesc("");
+      setCreatedChannel(null);
+      setSelectedContacts({});
+    };
+
+    return (
+      <div className="absolute inset-0 bg-white dark:bg-[#0b141a] z-50 flex flex-col font-sans select-none justify-between h-full">
+        <header className="px-4 py-3 flex items-center bg-white dark:bg-[#0b141a] shrink-0 sticky top-0 z-40 border-b border-zinc-100 dark:border-zinc-800 justify-between">
+          <div className="flex items-center gap-1.5">
+            <button 
+              onClick={() => setChannelFlowStep("form")}
+              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full active:scale-95 transition-transform text-[#1c2e35] dark:text-white cursor-pointer"
+              aria-label="Back"
+            >
+              <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+            </button>
+            <div className="flex flex-col ml-2 leading-tight">
+              <h2 className="text-[17px] font-bold text-[#111b21] dark:text-zinc-100">Invite followers</h2>
+              <span className="text-[12.5px] text-[#667781] dark:text-zinc-400 font-semibold">{selectedCount} of {contactsData.length} selected</span>
+            </div>
+          </div>
+          <button className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full active:scale-95 text-[#54656f] dark:text-zinc-400">
+            <span className="material-symbols-outlined text-[24px]">search</span>
+          </button>
+        </header>
+
+        <main className="flex-grow overflow-y-auto pb-24">
+          <div className="bg-[#f0f2f5] dark:bg-[#182229] px-6 py-4 text-center border-b border-zinc-100 dark:border-zinc-800/50">
+            <p className="text-[13px] text-[#667781] dark:text-zinc-400 leading-normal font-medium">
+              Only contacts who have you in their address book will receive your invite.
+            </p>
+          </div>
+
+          <div className="pt-4">
+            <h3 className="text-[14px] font-bold text-[#667781] dark:text-zinc-400 px-4 mb-2.5">Frequently contacted</h3>
+            <div className="flex flex-col">
+              {contactsData.filter(c => c.type === "frequent").map((contact) => (
+                <div 
+                  key={contact.id}
+                  onClick={() => toggleContactSelect(contact.id)}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-[42px] h-[42px] rounded-full overflow-hidden shrink-0 bg-zinc-200">
+                      <img className="w-full h-full object-cover" alt={contact.name} src={contact.avatar} />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[15.5px] font-bold text-[#1c2e35] dark:text-zinc-200 truncate">{contact.name}</span>
+                      {contact.sub && (
+                        <span className="text-[12px] text-[#667781] dark:text-zinc-400 truncate mt-0.5">{contact.sub}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0 mr-1">
+                    <span className={`material-symbols-outlined text-[24px] ${
+                      selectedContacts[contact.id] ? "text-[#00a884] fill" : "text-zinc-300 dark:text-zinc-700"
+                    }`}>
+                      {selectedContacts[contact.id] ? "check_box" : "check_box_outline_blank"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-4">
+            <h3 className="text-[14px] font-bold text-[#667781] dark:text-zinc-400 px-4 mb-2.5">Contacts on WhatsApp</h3>
+            <div className="flex flex-col">
+              {contactsData.filter(c => c.type === "whatsapp").map((contact) => (
+                <div 
+                  key={contact.id}
+                  onClick={() => toggleContactSelect(contact.id)}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    {contact.avatar ? (
+                      <div className="w-[42px] h-[42px] rounded-full overflow-hidden shrink-0 bg-zinc-200">
+                        <img className="w-full h-full object-cover" alt={contact.name} src={contact.avatar} />
+                      </div>
+                    ) : (
+                      <div className="w-[42px] h-[42px] rounded-full shrink-0 bg-[#dfe5e7] dark:bg-zinc-800 flex items-center justify-center text-[#54656f] dark:text-zinc-400">
+                        <span className="material-symbols-outlined text-[22px] fill">person</span>
+                      </div>
+                    )}
+                    <span className="text-[15.5px] font-bold text-[#1c2e35] dark:text-zinc-200 truncate">{contact.name}</span>
+                  </div>
+                  <div className="shrink-0 mr-1">
+                    <span className={`material-symbols-outlined text-[24px] ${
+                      selectedContacts[contact.id] ? "text-[#00a884] fill" : "text-zinc-300 dark:text-zinc-700"
+                    }`}>
+                      {selectedContacts[contact.id] ? "check_box" : "check_box_outline_blank"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
+
+        <div className="absolute bottom-6 right-6 z-40">
+          <button 
+            onClick={handleFinishFlow}
+            className="px-6 py-2.5 bg-[#00a884] hover:bg-[#008f70] text-white rounded-full font-bold text-[14.5px] shadow-lg active:scale-95 transition-transform flex items-center justify-center cursor-pointer"
+          >
+            {selectedCount > 0 ? `Send Invite (${selectedCount})` : "Skip"}
+          </button>
+        </div>
+
+        {channelFlowStep === "success" && (
+          <div className="absolute inset-0 bg-black/40 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-[#1f2c34] rounded-[24px] p-8 w-[240px] shadow-2xl flex flex-col items-center justify-center animate-in zoom-in-95 duration-200">
+              <div className="w-16 h-16 rounded-full bg-[#e6f5ef] dark:bg-emerald-950/40 text-[#0f8b5d] dark:text-[#25d366] flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-[36px] font-black">check</span>
+              </div>
+              <span className="text-[17px] font-bold text-[#111b21] dark:text-white text-center truncate w-full max-w-[180px]">
+                {createdChannel?.name || "Test"}
+              </span>
+              <span className="text-[13.5px] text-[#667781] dark:text-zinc-400 font-semibold mt-1">
+                Channel created
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // 4. MAIN UPDATES SCREEN
   return (
-    <div className="w-full bg-white text-[#1c2e35] antialiased min-h-screen flex flex-col pb-24 font-sans select-none">
+    <div className="w-full bg-white text-[#1c2e35] antialiased min-h-screen flex flex-col pb-24 font-sans select-none relative">
       {/* Top Header */}
       <header className="sticky top-0 bg-white z-40 px-4 py-3.5 flex justify-between items-center">
         <h1 className="text-[22px] font-bold text-[#1c2e35] font-sans">Updates</h1>
@@ -569,9 +930,59 @@ export default function UpdatesPage() {
           <button aria-label="Search" className="p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95">
             <span className="material-symbols-outlined text-[24px]">search</span>
           </button>
-          <button aria-label="More options" className="p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95">
-            <span className="material-symbols-outlined text-[24px]">more_vert</span>
-          </button>
+          <div className="relative">
+            <button 
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              aria-label="More options" 
+              className="p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[24px]">more_vert</span>
+            </button>
+
+            {showMoreMenu && (
+              <>
+                <div 
+                  className="fixed inset-0 z-45" 
+                  onClick={() => setShowMoreMenu(false)}
+                />
+                <div className="absolute right-0 mt-2 bg-white dark:bg-[#233138] rounded-[16px] shadow-2xl py-1.5 w-[190px] z-50 animate-in fade-in slide-in-from-top-2 duration-150 border border-zinc-100/80 dark:border-zinc-800 text-[#111b21] dark:text-zinc-200">
+                  <button 
+                    onClick={() => { setShowMoreMenu(false); setChannelFlowStep("intro"); }}
+                    className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-[14.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    Create channel
+                  </button>
+                  <button 
+                    onClick={() => { setShowMoreMenu(false); alert("Simulating status privacy..."); }}
+                    className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-[14.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    Status privacy
+                  </button>
+                  <button 
+                    onClick={() => { setShowMoreMenu(false); alert("Simulating starred..."); }}
+                    className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-[14.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    Starred
+                  </button>
+                  <button 
+                    onClick={() => { setShowMoreMenu(false); alert("Simulating ad preferences..."); }}
+                    className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-[14.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    Ad preferences
+                  </button>
+                  <button 
+                    onClick={() => { 
+                      setShowMoreMenu(false); 
+                      router.push("/settings");
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-[14.5px] font-medium transition-colors border-t border-zinc-100 dark:border-zinc-800/50 cursor-pointer"
+                  >
+                    Settings
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -641,7 +1052,7 @@ export default function UpdatesPage() {
           </div>
 
           <div className="flex flex-col">
-            {channelsList.map((chan) => (
+            {[...userCreatedChannels, ...channelsList].map((chan) => (
               <div
                 key={chan.id}
                 onClick={() => setActiveChannel(chan)}
@@ -744,7 +1155,7 @@ export default function UpdatesPage() {
       </main>
 
       {/* Floating Action Buttons */}
-      <div className="fixed bottom-24 right-4 flex flex-col gap-3.5 z-40 items-center">
+      <div className="absolute bottom-24 right-4 flex flex-col gap-3.5 z-40 items-center">
         {/* Edit status (Pencil) Button */}
         <button
           aria-label="Edit Status"

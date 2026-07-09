@@ -75,6 +75,14 @@ export default function CommunitiesPage() {
     }
   }, []);
 
+  useEffect(() => {
+    const shouldHide = step !== null;
+    window.dispatchEvent(new CustomEvent("hide-bottom-nav", { detail: shouldHide }));
+    return () => {
+      window.dispatchEvent(new CustomEvent("hide-bottom-nav", { detail: false }));
+    };
+  }, [step]);
+
   const toggleTheme = () => {
     const nextDark = !isDarkMode;
     setIsDarkMode(nextDark);
@@ -543,7 +551,7 @@ export default function CommunitiesPage() {
 
         {/* Simple Add Group Modal */}
         {showAddGroupModal && (
-          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl p-6 w-full max-w-[320px] shadow-xl animate-in zoom-in-95 duration-150">
               <h3 className="text-[17px] font-bold text-[#111b21] mb-4">Add new group</h3>
               <form onSubmit={handleAddGroupSubmit} className="flex flex-col gap-4">
@@ -931,7 +939,7 @@ export default function CommunitiesPage() {
 
         {/* Modal: Edit Community Info (Name & Description) */}
         {showEditInfoModal && (
-          <div className="fixed inset-0 z-[150] bg-black/50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 z-[150] bg-black/50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl p-6 w-full max-w-[340px] shadow-xl animate-in zoom-in-95 duration-150">
               <h3 className="text-[17px] font-bold text-[#111b21] mb-4">Edit community info</h3>
               <form onSubmit={handleEditInfoSubmit} className="flex flex-col gap-4">
@@ -980,7 +988,7 @@ export default function CommunitiesPage() {
 
         {/* Modal: Simple Add Group */}
         {showAddGroupModal && (
-          <div className="fixed inset-0 z-[150] bg-black/50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 z-[150] bg-black/50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl p-6 w-full max-w-[320px] shadow-xl animate-in zoom-in-95 duration-150">
               <h3 className="text-[17px] font-bold text-[#111b21] mb-4">Add new group</h3>
               <form onSubmit={handleAddGroupSubmit} className="flex flex-col gap-4">

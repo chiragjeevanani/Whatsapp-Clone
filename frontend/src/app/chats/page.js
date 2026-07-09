@@ -32,6 +32,14 @@ export default function ChatsPage() {
     }
   }, []);
 
+  useEffect(() => {
+    const shouldHide = !!(showLockedChatsList || showArchivedChatsList);
+    window.dispatchEvent(new CustomEvent("hide-bottom-nav", { detail: shouldHide }));
+    return () => {
+      window.dispatchEvent(new CustomEvent("hide-bottom-nav", { detail: false }));
+    };
+  }, [showLockedChatsList, showArchivedChatsList]);
+
   const toggleTheme = () => {
     const nextDark = !isDarkMode;
     setIsDarkMode(nextDark);
@@ -705,7 +713,7 @@ export default function ChatsPage() {
       </main>
 
       {/* Floating Action Button */}
-      <div className="fixed bottom-24 right-4 z-40">
+      <div className="absolute bottom-24 right-4 z-40">
         <button
           onClick={() => setShowSelectContact(true)}
           aria-label="New Message"
@@ -722,7 +730,7 @@ export default function ChatsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+            className="absolute inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
             onClick={() => setQuickProfileChat(null)}
           >
             <motion.div 
@@ -813,7 +821,7 @@ export default function ChatsPage() {
 
       {/* PIN Verification Modal Overlay */}
       {showPinModal && (
-        <div className="fixed inset-0 z-[150] bg-black/60 flex items-center justify-center p-4 transition-all duration-200">
+        <div className="absolute inset-0 z-[150] bg-black/60 flex items-center justify-center p-4 transition-all duration-200">
           <div className="w-full max-w-[340px] bg-white rounded-[24px] overflow-hidden text-[#111b21] shadow-2xl flex flex-col font-sans select-none animate-in fade-in zoom-in-95 duration-150 p-6">
             <h3 className="text-[18px] font-bold text-[#111b21]">Locked Chats</h3>
             <p className="text-[13.5px] text-[#667781] mt-2 mb-4 leading-relaxed">
@@ -865,7 +873,7 @@ export default function ChatsPage() {
 
       {/* Locked Chats List Overlay */}
       {showLockedChatsList && (
-        <div className="fixed inset-0 z-[150] bg-white flex flex-col font-sans select-none animate-in slide-in-from-right duration-250">
+        <div className="absolute inset-0 z-[150] bg-white flex flex-col font-sans select-none animate-in slide-in-from-right duration-250">
           {/* Header */}
           <header className="px-4 py-3 flex items-center bg-white border-b border-zinc-100 shrink-0">
             <button 
@@ -940,7 +948,7 @@ export default function ChatsPage() {
 
       {/* Archived Chats List Overlay */}
       {showArchivedChatsList && (
-        <div className="fixed inset-0 z-[150] bg-white flex flex-col font-sans select-none animate-in slide-in-from-right duration-250">
+        <div className="absolute inset-0 z-[150] bg-white flex flex-col font-sans select-none animate-in slide-in-from-right duration-250">
           {/* Header */}
           <header className="px-4 py-3 flex items-center bg-white border-b border-zinc-100 shrink-0">
             <button 

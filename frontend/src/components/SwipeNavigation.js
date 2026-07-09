@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, useMotionValue } from "framer-motion";
 import ChatsPage from "@/app/chats/page";
 import UpdatesPage from "@/app/updates/page";
 import CommunitiesPage from "@/app/communities/page";
@@ -16,43 +16,76 @@ export default function SwipeNavigation({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   
-  const currentIndex = TABS.indexOf(pathname);
+  const pathnameIndex = TABS.indexOf(pathname);
+  const [localIndex, setLocalIndex] = useState(pathnameIndex !== -1 ? pathnameIndex : 0);
   const containerRef = useRef(null);
   const [width, setWidth] = useState(0);
+  const dragX = useMotionValue(0);
+  const [hideNavbar, setHideNavbar] = useState(false);
+
+  // Sync local index with route path when pathname changes (e.g. browser history navigation)
+  useEffect(() => {
+    if (pathnameIndex !== -1 && pathnameIndex !== localIndex) {
+      setLocalIndex(pathnameIndex);
+    }
+  }, [pathname]);
+
+  useEffect(() => {
+    const handleHideNav = (e) => {
+      setHideNavbar(e.detail);
+    };
+    window.addEventListener("hide-bottom-nav", handleHideNav);
+    return () => window.removeEventListener("hide-bottom-nav", handleHideNav);
+  }, []);
+
+  useEffect(() => {
+    setHideNavbar(false);
+  }, [localIndex]);
 
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current) {
-        setWidth(containerRef.current.offsetWidth);
+        const newWidth = containerRef.current.offsetWidth;
+        setWidth(newWidth);
+        // Only initialize dragX on initial layout/resize to avoid breaking spring animation transitions
+        if (dragX.get() === 0 && localIndex > 0) {
+          dragX.set(-localIndex * newWidth);
+        }
       }
     };
     window.addEventListener("resize", handleResize);
     handleResize(); // initial calculation
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [localIndex]);
+
+  const handleTabChange = (index) => {
+    setLocalIndex(index);
+    router.push(TABS[index]);
+  };
 
   const handleDragEnd = (event, info) => {
     const offset = info.offset.x;
     const velocity = info.velocity.x;
 
-    let targetIndex = currentIndex;
+    let targetIndex = localIndex;
     if (offset < -SWIPE_THRESHOLD || velocity < -400) {
-      if (currentIndex < TABS.length - 1) {
-        targetIndex = currentIndex + 1;
+      if (localIndex < TABS.length - 1) {
+        targetIndex = localIndex + 1;
       }
     } else if (offset > SWIPE_THRESHOLD || velocity > 400) {
-      if (currentIndex > 0) {
-        targetIndex = currentIndex - 1;
+      if (localIndex > 0) {
+        targetIndex = localIndex - 1;
       }
     }
 
-    if (targetIndex !== currentIndex) {
+    if (targetIndex !== localIndex) {
+      setLocalIndex(targetIndex);
       router.push(TABS[targetIndex]);
     }
   };
 
   // If not one of the main sliding tabs, render normally
-  if (currentIndex === -1) {
+  if (pathnameIndex === -1) {
     return <>{children}</>;
   }
 
@@ -66,35 +99,42 @@ export default function SwipeNavigation({ children }) {
           drag="x"
           dragDirectionLock
           dragConstraints={{ 
-            left: currentIndex < TABS.length - 1 ? -((currentIndex + 1) * width) : -currentIndex * width, 
-            right: currentIndex > 0 ? -((currentIndex - 1) * width) : -currentIndex * width 
+            left: localIndex < TABS.length - 1 ? -((localIndex + 1) * width) : -localIndex * width, 
+            right: localIndex > 0 ? -((localIndex - 1) * width) : -localIndex * width 
           }}
           dragElastic={0.15}
           onDragEnd={handleDragEnd}
-          animate={{ x: -currentIndex * width }}
+          animate={{ x: -localIndex * width }}
           transition={{
             type: "spring",
             stiffness: 300,
             damping: 30
           }}
+          style={{ x: dragX, width: `${TABS.length * 100}%` }}
           className="absolute top-0 bottom-0 flex cursor-grab active:cursor-grabbing"
-          style={{ width: `${TABS.length * 100}%` }}
         >
-          <div className="h-full" style={{ width: `${100 / TABS.length}%` }}>
+          <div className="h-full relative overflow-y-auto" style={{ width: `${100 / TABS.length}%`, touchAction: "pan-y" }}>
             <ChatsPage />
           </div>
-          <div className="h-full" style={{ width: `${100 / TABS.length}%` }}>
+          <div className="h-full relative overflow-y-auto" style={{ width: `${100 / TABS.length}%`, touchAction: "pan-y" }}>
             <UpdatesPage />
           </div>
-          <div className="h-full" style={{ width: `${100 / TABS.length}%` }}>
+          <div className="h-full relative overflow-y-auto" style={{ width: `${100 / TABS.length}%`, touchAction: "pan-y" }}>
             <CommunitiesPage />
           </div>
-          <div className="h-full" style={{ width: `${100 / TABS.length}%` }}>
+          <div className="h-full relative overflow-y-auto" style={{ width: `${100 / TABS.length}%`, touchAction: "pan-y" }}>
             <CallsPage />
           </div>
         </motion.div>
       </div>
-      <Navigation activeTab={TABS[currentIndex].substring(1)} />
+      {!hideNavbar && (
+        <Navigation 
+          activeTab={TABS[localIndex].substring(1)} 
+          dragX={dragX} 
+          width={width} 
+          onTabChange={handleTabChange}
+        />
+      )}
     </div>
   );
 }

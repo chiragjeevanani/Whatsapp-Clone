@@ -828,7 +828,7 @@ export default function CallsPage() {
       </main>
 
       {/* Floating Action Button */}
-      <div className="fixed bottom-24 right-4 z-40">
+      <div className="absolute bottom-24 right-4 z-40">
         <button
           onClick={() => setShowSelectContact(true)}
           aria-label="New Call"
