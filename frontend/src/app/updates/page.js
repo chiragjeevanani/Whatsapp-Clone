@@ -27,17 +27,30 @@ export default function UpdatesPage() {
   const [pollVotes, setPollVotes] = useState({ yes: 1, no: 5 });
   const [selectedPollOption, setSelectedPollOption] = useState(null);
 
+  // Status Privacy States
+  const [statusPrivacyFlow, setStatusPrivacyFlow] = useState(false);
+  const [privacyOption, setPrivacyOption] = useState("only-share"); // "contacts", "except", "only-share"
+  const [allowSharing, setAllowSharing] = useState(false);
+  const [shareFacebook, setShareFacebook] = useState(false);
+  const [shareInstagram, setShareInstagram] = useState(false);
+  const [showEditContacts, setShowEditContacts] = useState(null); // null, "except", "only-share"
+  const [excludedContacts, setExcludedContacts] = useState({});
+  const [includedContacts, setIncludedContacts] = useState({});
+
+  // Starred Flow State
+  const [starredFlow, setStarredFlow] = useState(false);
+
   const toggleFollow = (channel) => {
     setFollowing((prev) => ({ ...prev, [channel]: !prev[channel] }));
   };
 
   useEffect(() => {
-    const shouldHide = !!(activeChannel || activeStatus || activeSuggestedChannel || channelFlowStep);
+    const shouldHide = !!(activeChannel || activeStatus || activeSuggestedChannel || channelFlowStep || statusPrivacyFlow || starredFlow);
     window.dispatchEvent(new CustomEvent("hide-bottom-nav", { detail: shouldHide }));
     return () => {
       window.dispatchEvent(new CustomEvent("hide-bottom-nav", { detail: false }));
     };
-  }, [activeChannel, activeStatus, activeSuggestedChannel, channelFlowStep]);
+  }, [activeChannel, activeStatus, activeSuggestedChannel, channelFlowStep, statusPrivacyFlow, starredFlow]);
 
   // Success popup auto-advance timer
   useEffect(() => {
@@ -184,6 +197,331 @@ export default function UpdatesPage() {
   const totalVotes = pollVotes.yes + pollVotes.no;
   const yesPercentage = Math.round((pollVotes.yes / totalVotes) * 100) || 0;
   const noPercentage = Math.round((pollVotes.no / totalVotes) * 100) || 0;
+
+  // ==========================================
+  // STATUS PRIVACY VIEW
+  // ==========================================
+  if (statusPrivacyFlow) {
+    const contactsData = [
+      { id: "swaanniiyaaaa", name: "Swaanniiyaaaa🕊️ ✨✨✨", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "aditi", name: "Aditi", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "appzeto-hr", name: "appzeto hr Sir", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "kittu", name: "Kittu", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "ankit-sir", name: "Ankit sir appzeto", avatar: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "vini-sage", name: "Vini Sage", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "ujjawal", name: "Ujjawal appzeto", sub: "If it is textable then text, Don't call!", avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&fit=crop&q=80", type: "frequent" },
+      { id: "c8547", name: "******8547", avatar: null, type: "whatsapp" },
+      { id: "phone1", name: "+91 95105 91925", avatar: null, type: "whatsapp" },
+      { id: "phone2", name: "+919510591925", avatar: null, type: "whatsapp" },
+      { id: "mahi", name: "~Mahi Tanpure Sage", avatar: null, type: "whatsapp" },
+      { id: "c1111", name: "1111", avatar: null, type: "whatsapp" },
+    ];
+
+    const excludedCount = Object.values(excludedContacts).filter(Boolean).length;
+    const includedCount = Object.values(includedContacts).filter(Boolean).length;
+
+    // Contact selection sub-screen
+    if (showEditContacts) {
+      const isExcept = showEditContacts === "except";
+      const targetMap = isExcept ? excludedContacts : includedContacts;
+      const setTargetMap = isExcept ? setExcludedContacts : setIncludedContacts;
+
+      const toggleContact = (id) => {
+        setTargetMap(prev => ({ ...prev, [id]: !prev[id] }));
+      };
+
+      const selectedCount = Object.values(targetMap).filter(Boolean).length;
+
+      return (
+        <div className="absolute inset-0 bg-white dark:bg-[#0b141a] z-50 flex flex-col font-sans select-none justify-between h-full">
+          <header className="px-4 py-3 flex items-center bg-white dark:bg-[#0b141a] shrink-0 sticky top-0 z-40 border-b border-zinc-100 dark:border-zinc-800 justify-between">
+            <div className="flex items-center gap-1.5">
+              <button 
+                onClick={() => setShowEditContacts(null)}
+                className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full active:scale-95 transition-transform text-[#1c2e35] dark:text-white cursor-pointer"
+                aria-label="Back"
+              >
+                <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+              </button>
+              <div className="flex flex-col ml-2 leading-tight">
+                <h2 className="text-[17px] font-bold text-[#111b21] dark:text-zinc-100">
+                  {isExcept ? "Hide status from..." : "Share status with..."}
+                </h2>
+                <span className="text-[12.5px] text-[#667781] dark:text-zinc-400 font-semibold">
+                  {selectedCount} selected
+                </span>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-grow overflow-y-auto pb-24">
+            <div className="flex flex-col">
+              {contactsData.map((contact) => (
+                <div 
+                  key={contact.id}
+                  onClick={() => toggleContact(contact.id)}
+                  className="flex items-center justify-between px-6 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer transition-colors border-b border-zinc-100/50 dark:border-zinc-800/50"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    {contact.avatar ? (
+                      <div className="w-[40px] h-[40px] rounded-full overflow-hidden shrink-0 bg-zinc-200">
+                        <img className="w-full h-full object-cover" alt={contact.name} src={contact.avatar} />
+                      </div>
+                    ) : (
+                      <div className="w-[40px] h-[40px] rounded-full shrink-0 bg-[#dfe5e7] dark:bg-zinc-800 flex items-center justify-center text-[#54656f] dark:text-zinc-400">
+                        <span className="material-symbols-outlined text-[20px] fill">person</span>
+                      </div>
+                    )}
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[15px] font-bold text-[#1c2e35] dark:text-zinc-200 truncate">{contact.name}</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 mr-1">
+                    <span className={`material-symbols-outlined text-[24px] ${
+                      targetMap[contact.id] ? (isExcept ? "text-red-500 fill" : "text-[#00a884] fill") : "text-zinc-350 dark:text-zinc-700"
+                    }`}>
+                      {targetMap[contact.id] ? "check_box" : "check_box_outline_blank"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </main>
+
+          <div className="absolute bottom-6 right-6 z-40">
+            <button 
+              onClick={() => setShowEditContacts(null)}
+              className="w-[56px] h-[56px] bg-[#00a884] hover:bg-[#008f70] text-white rounded-full font-bold text-[14.5px] shadow-lg active:scale-95 transition-transform flex items-center justify-center cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[28px] font-bold">check</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="absolute inset-0 bg-[#f7f8fa] dark:bg-[#0b141a] text-[#1c2e35] dark:text-zinc-100 z-50 flex flex-col font-sans overflow-hidden h-screen select-none">
+        {/* Header */}
+        <header className="bg-white dark:bg-[#1f2c34] flex items-center h-[60px] px-2.5 shrink-0 border-b border-zinc-100 dark:border-zinc-800/80 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+          <button
+            onClick={() => setStatusPrivacyFlow(false)}
+            aria-label="Back"
+            className="text-[#54656f] dark:text-zinc-300 p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full active:scale-95 transition-transform shrink-0"
+          >
+            <span className="material-symbols-outlined text-[24px] font-bold">arrow_back</span>
+          </button>
+          <h2 className="text-[19px] font-semibold text-[#111b21] dark:text-white ml-3">
+            Status privacy
+          </h2>
+        </header>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto no-scrollbar pb-10 bg-white dark:bg-[#0b141a]">
+          <div className="text-[14px] font-semibold text-[#667781] dark:text-zinc-400 px-6 pt-5 pb-2">
+            Audience who can see my status
+          </div>
+
+          {/* Options */}
+          <div className="flex flex-col">
+            {/* Option 1: My contacts */}
+            <div 
+              onClick={() => setPrivacyOption("contacts")}
+              className="flex items-center justify-between px-6 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/20 cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-[42px] h-[42px] rounded-full bg-zinc-105 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-600 dark:text-zinc-350 shrink-0">
+                  <span className="material-symbols-outlined text-[22px]">person</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[15px] font-semibold text-[#111b21] dark:text-zinc-100">My contacts</span>
+                </div>
+              </div>
+              <div className="relative flex items-center">
+                <div className={`w-[20px] h-[20px] rounded-full border-2 flex items-center justify-center transition-colors ${
+                  privacyOption === "contacts" ? "border-[#00a884]" : "border-zinc-400 dark:border-zinc-600"
+                }`}>
+                  {privacyOption === "contacts" && (
+                    <div className="w-[10px] h-[10px] rounded-full bg-[#00a884]" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Option 2: My contacts except... */}
+            <div 
+              onClick={() => setPrivacyOption("except")}
+              className="flex items-center justify-between px-6 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/20 cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-[42px] h-[42px] rounded-full bg-zinc-105 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-600 dark:text-zinc-350 shrink-0">
+                  <span className="material-symbols-outlined text-[22px]">person_remove</span>
+                </div>
+                <div className="flex flex-col leading-tight">
+                  <span className="text-[15px] font-semibold text-[#111b21] dark:text-zinc-100">My contacts except...</span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[13px] text-[#667781] dark:text-zinc-400">
+                      {excludedCount} excluded
+                    </span>
+                    <span className="text-[13px] text-[#667781] dark:text-zinc-400">•</span>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPrivacyOption("except");
+                        setShowEditContacts("except");
+                      }}
+                      className="text-[#00a884] hover:underline text-[13px] font-semibold flex items-center"
+                    >
+                      Edit <span className="material-symbols-outlined text-[14px] ml-0.5">chevron_right</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="relative flex items-center">
+                <div className={`w-[20px] h-[20px] rounded-full border-2 flex items-center justify-center transition-colors ${
+                  privacyOption === "except" ? "border-[#00a884]" : "border-zinc-400 dark:border-zinc-600"
+                }`}>
+                  {privacyOption === "except" && (
+                    <div className="w-[10px] h-[10px] rounded-full bg-[#00a884]" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Option 3: Only share with... */}
+            <div 
+              onClick={() => setPrivacyOption("only-share")}
+              className="flex items-center justify-between px-6 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/20 cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-[42px] h-[42px] rounded-full bg-zinc-105 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-600 dark:text-zinc-350 shrink-0">
+                  <span className="material-symbols-outlined text-[22px]">how_to_reg</span>
+                </div>
+                <div className="flex flex-col leading-tight">
+                  <span className="text-[15px] font-semibold text-[#111b21] dark:text-zinc-100">Only share with...</span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[13px] text-[#667781] dark:text-zinc-400">
+                      {includedCount} included
+                    </span>
+                    <span className="text-[13px] text-[#667781] dark:text-zinc-400">•</span>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPrivacyOption("only-share");
+                        setShowEditContacts("only-share");
+                      }}
+                      className="text-[#00a884] hover:underline text-[13px] font-semibold flex items-center"
+                    >
+                      Edit <span className="material-symbols-outlined text-[14px] ml-0.5">chevron_right</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="relative flex items-center">
+                <div className={`w-[20px] h-[20px] rounded-full border-2 flex items-center justify-center transition-colors ${
+                  privacyOption === "only-share" ? "border-[#00a884]" : "border-zinc-400 dark:border-zinc-600"
+                }`}>
+                  {privacyOption === "only-share" && (
+                    <div className="w-[10px] h-[10px] rounded-full bg-[#00a884]" />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr className="border-t border-zinc-100 dark:border-zinc-850 my-4" />
+
+          {/* Allow Sharing Row */}
+          <div className="flex items-start justify-between px-6 py-2">
+            <div className="flex gap-4 flex-1 pr-4">
+              <div className="w-[42px] h-[42px] rounded-full bg-zinc-105 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-600 dark:text-zinc-350 shrink-0">
+                <span className="material-symbols-outlined text-[22px]">swap_horiz</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[15px] font-semibold text-[#111b21] dark:text-zinc-100">Allow sharing</span>
+                <span className="text-[13.5px] text-[#667781] dark:text-zinc-450 leading-normal mt-1">
+                  Let people who can see your status reshare and forward it.
+                </span>
+              </div>
+            </div>
+            <div 
+              onClick={() => setAllowSharing(!allowSharing)}
+              className={`w-[40px] h-[22px] rounded-full relative cursor-pointer transition-colors duration-200 mt-2 shrink-0 ${
+                allowSharing ? "bg-[#00a884]" : "bg-zinc-300 dark:bg-zinc-700"
+              }`}
+            >
+              <div className={`w-[16px] h-[16px] rounded-full bg-white absolute top-[3px] transition-all duration-200 ${
+                allowSharing ? "left-[21px]" : "left-[3px]"
+              }`} />
+            </div>
+          </div>
+
+          <hr className="border-t border-zinc-100 dark:border-zinc-855 my-4" />
+
+          {/* Share across apps section */}
+          <div className="text-[14.5px] font-semibold text-[#667781] dark:text-zinc-400 px-6 pt-2">
+            Share across apps
+          </div>
+          <div className="text-[13.5px] text-[#667781] dark:text-zinc-450 px-6 pt-1 pb-3 leading-normal">
+            Automatically share your status to your Facebook or Instagram Stories.{" "}
+            <a href="#" onClick={(e) => e.preventDefault()} className="text-[#00a884] font-semibold hover:underline">
+              Manage in Accounts Centre
+            </a>
+          </div>
+
+          <div className="flex flex-col">
+            {/* Facebook Row */}
+            <div className="flex items-center justify-between px-6 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/10 transition-colors">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-[42px] h-[42px] rounded-full bg-zinc-105 dark:bg-zinc-800/80 flex items-center justify-center shrink-0">
+                  <svg className="w-[22px] h-[22px] text-[#1877f2] fill-current" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                </div>
+                <span className="text-[15.5px] font-semibold text-[#111b21] dark:text-zinc-100">Facebook Story</span>
+              </div>
+              <div 
+                onClick={() => setShareFacebook(!shareFacebook)}
+                className={`w-[40px] h-[22px] rounded-full relative cursor-pointer transition-colors duration-200 shrink-0 ${
+                  shareFacebook ? "bg-[#00a884]" : "bg-zinc-300 dark:bg-zinc-700"
+                }`}
+              >
+                <div className={`w-[16px] h-[16px] rounded-full bg-white absolute top-[3px] transition-all duration-200 ${
+                  shareFacebook ? "left-[21px]" : "left-[3px]"
+                }`} />
+              </div>
+            </div>
+
+            {/* Instagram Row */}
+            <div className="flex items-center justify-between px-6 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/10 transition-colors">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-[42px] h-[42px] rounded-full bg-zinc-105 dark:bg-zinc-800/80 flex items-center justify-center shrink-0">
+                  <svg className="w-[22px] h-[22px] text-[#e1306c] fill-current" viewBox="0 0 24 24">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                  </svg>
+                </div>
+                <span className="text-[15.5px] font-semibold text-[#111b21] dark:text-zinc-100">Instagram Story</span>
+              </div>
+              <div 
+                onClick={() => setShareInstagram(!shareInstagram)}
+                className={`w-[40px] h-[22px] rounded-full relative cursor-pointer transition-colors duration-200 shrink-0 ${
+                  shareInstagram ? "bg-[#00a884]" : "bg-zinc-300 dark:bg-zinc-700"
+                }`}
+              >
+                <div className={`w-[16px] h-[16px] rounded-full bg-white absolute top-[3px] transition-all duration-200 ${
+                  shareInstagram ? "left-[21px]" : "left-[3px]"
+                }`} />
+              </div>
+            </div>
+          </div>
+
+          <div className="text-[12.5px] text-[#667781] dark:text-zinc-400 px-6 py-6 leading-relaxed bg-[#f7f8fa] dark:bg-[#0b141a]">
+            Changes to your privacy settings won't affect status updates that you shared already.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 1. RENDER FULL SCREEN STATUS VIEWER
   if (activeStatus) {
@@ -920,6 +1258,43 @@ export default function UpdatesPage() {
     );
   }
 
+  // ==========================================
+  // STARRED MESSAGES VIEW
+  // ==========================================
+  if (starredFlow) {
+    return (
+      <div className="absolute inset-0 bg-white dark:bg-[#0b141a] text-[#1c2e35] dark:text-zinc-100 z-50 flex flex-col font-sans overflow-hidden h-screen select-none">
+        {/* Header */}
+        <header className="bg-white dark:bg-[#1f2c34] flex items-center h-[60px] px-2.5 shrink-0 border-b border-zinc-100 dark:border-zinc-800/80 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+          <button
+            onClick={() => setStarredFlow(false)}
+            aria-label="Back"
+            className="text-[#54656f] dark:text-zinc-300 p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full active:scale-95 transition-transform shrink-0"
+          >
+            <span className="material-symbols-outlined text-[24px] font-bold">arrow_back</span>
+          </button>
+          <h2 className="text-[19px] font-semibold text-[#111b21] dark:text-white ml-3">
+            Starred
+          </h2>
+        </header>
+
+        {/* Content Centered */}
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center pb-24 bg-white dark:bg-[#0b141a]">
+          {/* Green circular badge with rings and a star outline */}
+          <div className="w-24 h-24 rounded-full bg-[#00e676] border-2 border-zinc-900 flex items-center justify-center relative mb-8">
+            <div className="absolute inset-1.5 rounded-full border border-zinc-900/60 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[38px] text-zinc-900 select-none" style={{ fontVariationSettings: "'FILL' 0, 'wght' 600" }}>star</span>
+            </div>
+          </div>
+
+          <p className="text-[14.5px] text-[#667781] dark:text-zinc-400 leading-relaxed max-w-[280px]">
+            Tap and hold on any message or channel update to star it, so you can easily find it later.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // 4. MAIN UPDATES SCREEN
   return (
     <div className="w-full bg-white text-[#1c2e35] antialiased min-h-screen flex flex-col pb-24 font-sans select-none relative">
@@ -953,23 +1328,18 @@ export default function UpdatesPage() {
                     Create channel
                   </button>
                   <button 
-                    onClick={() => { setShowMoreMenu(false); alert("Simulating status privacy..."); }}
+                    onClick={() => { setShowMoreMenu(false); setStatusPrivacyFlow(true); }}
                     className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-[14.5px] font-medium transition-colors cursor-pointer"
                   >
                     Status privacy
                   </button>
                   <button 
-                    onClick={() => { setShowMoreMenu(false); alert("Simulating starred..."); }}
+                    onClick={() => { setShowMoreMenu(false); setStarredFlow(true); }}
                     className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-[14.5px] font-medium transition-colors cursor-pointer"
                   >
                     Starred
                   </button>
-                  <button 
-                    onClick={() => { setShowMoreMenu(false); alert("Simulating ad preferences..."); }}
-                    className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-[14.5px] font-medium transition-colors cursor-pointer"
-                  >
-                    Ad preferences
-                  </button>
+
                   <button 
                     onClick={() => { 
                       setShowMoreMenu(false); 

@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Navigation from "@/components/Navigation";
 
 export default function CallsPage() {
+  const router = useRouter();
+  const [showCallsMenu, setShowCallsMenu] = useState(false);
   const [showDialer, setShowDialer] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [showSelectContact, setShowSelectContact] = useState(false);
@@ -117,6 +120,8 @@ export default function CallsPage() {
       avatarText: "Appzeto",
     },
   ];
+
+  const [calls, setCalls] = useState(callsList);
 
   const keypadButtons = [
     { num: "1", sub: "" },
@@ -737,15 +742,53 @@ export default function CallsPage() {
   return (
     <div className="w-full bg-white text-[#1c2e35] antialiased min-h-screen flex flex-col pb-24 font-sans select-none">
       {/* Top Header */}
-      <header className="sticky top-0 bg-white z-40 px-4 py-3.5 flex justify-between items-center">
-        <h1 className="text-[22px] font-bold text-[#1c2e35] font-sans">Calls</h1>
-        <div className="flex items-center gap-5 text-[#3b4a54]">
-          <button aria-label="Search" className="p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95">
+      <header className="sticky top-0 bg-white dark:bg-[#111b21] z-40 px-4 py-3.5 flex justify-between items-center border-b border-zinc-100/50 dark:border-zinc-800/50">
+        <h1 className="text-[22px] font-bold text-[#1c2e35] dark:text-white font-sans">Calls</h1>
+        <div className="flex items-center gap-5 text-[#3b4a54] dark:text-zinc-300">
+          <button aria-label="Search" className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors active:scale-95">
             <span className="material-symbols-outlined text-[24px]">search</span>
           </button>
-          <button aria-label="More options" className="p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95">
-            <span className="material-symbols-outlined text-[24px]">more_vert</span>
-          </button>
+          <div className="relative">
+            <button 
+              onClick={() => setShowCallsMenu(!showCallsMenu)}
+              aria-label="More options" 
+              className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors active:scale-95 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[24px]">more_vert</span>
+            </button>
+
+            {showCallsMenu && (
+              <>
+                <div 
+                  className="fixed inset-0 z-45" 
+                  onClick={() => setShowCallsMenu(false)}
+                />
+                <div className="absolute right-0 mt-2 bg-white dark:bg-[#233138] rounded-[16px] shadow-2xl py-1.5 w-[190px] z-50 animate-in fade-in slide-in-from-top-2 duration-150 border border-zinc-100/80 dark:border-zinc-800 text-[#111b21] dark:text-zinc-200">
+                  <button 
+                    onClick={() => { setShowCallsMenu(false); setCalls([]); }}
+                    className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-[14.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    Clear call log
+                  </button>
+                  <button 
+                    onClick={() => { setShowCallsMenu(false); setShowSchedule(true); }}
+                    className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-[14.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    Scheduled calls
+                  </button>
+                  <button 
+                    onClick={() => { 
+                      setShowCallsMenu(false); 
+                      router.push("/settings");
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-[14.5px] font-medium transition-colors border-t border-zinc-100 dark:border-zinc-800/50 cursor-pointer"
+                  >
+                    Settings
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -772,56 +815,63 @@ export default function CallsPage() {
 
         {/* Calls List */}
         <section className="flex flex-col">
-          {callsList.map((call) => (
-            <div
-              key={call.id}
-              className="flex items-center justify-between px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                {/* Avatar */}
-                <div className={`w-[48px] h-[48px] rounded-full flex items-center justify-center shrink-0 ${call.avatarBg} overflow-hidden`}>
-                  {call.avatarText === "Appzeto" ? (
-                    <div className="flex flex-col items-center justify-center text-center p-1">
-                      <span className="text-[7.5px] font-black uppercase tracking-tighter leading-none">Appzeto</span>
-                    </div>
-                  ) : (
-                    <span className="text-sm font-bold">{call.avatarText}</span>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className={`text-[15.5px] font-bold truncate max-w-[85%] ${call.missed ? "text-[#ea0038]" : "text-[#1c2e35]"}`}>
-                    {call.name}
-                  </span>
-                  
-                  {call.subtitle && (
-                    <span className="text-[13px] text-[#667781] font-normal truncate mt-0.5">
-                      {call.subtitle}
-                    </span>
-                  )}
-
-                  <div className="flex items-center gap-1 text-[#667781] text-[13px] font-normal mt-0.5">
-                    {call.incoming ? (
-                      <span className={`material-symbols-outlined text-[17px] ${call.missed ? "text-[#ea0038]" : "text-[#00a884]"} font-bold`}>
-                        call_received
-                      </span>
+          {calls.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 px-8 text-center text-[#667781] dark:text-zinc-400">
+              <span className="material-symbols-outlined text-[48px] mb-3 text-zinc-300">call</span>
+              <p className="text-[14.5px]">No call logs available.</p>
+            </div>
+          ) : (
+            calls.map((call) => (
+              <div
+                key={call.id}
+                className="flex items-center justify-between px-4 py-3.5 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                  {/* Avatar */}
+                  <div className={`w-[48px] h-[48px] rounded-full flex items-center justify-center shrink-0 ${call.avatarBg} overflow-hidden`}>
+                    {call.avatarText === "Appzeto" ? (
+                      <div className="flex flex-col items-center justify-center text-center p-1">
+                        <span className="text-[7.5px] font-black uppercase tracking-tighter leading-none">Appzeto</span>
+                      </div>
                     ) : (
-                      <span className="material-symbols-outlined text-[17px] text-[#00a884] font-bold">
-                        call_made
+                      <span className="text-sm font-bold">{call.avatarText}</span>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className={`text-[15.5px] font-bold truncate max-w-[85%] ${call.missed ? "text-[#ea0038]" : "text-[#1c2e35]"}`}>
+                      {call.name}
+                    </span>
+                    
+                    {call.subtitle && (
+                      <span className="text-[13px] text-[#667781] font-normal truncate mt-0.5">
+                        {call.subtitle}
                       </span>
                     )}
-                    <span className="truncate">{call.time}</span>
+
+                    <div className="flex items-center gap-1 text-[#667781] text-[13px] font-normal mt-0.5">
+                      {call.incoming ? (
+                        <span className={`material-symbols-outlined text-[17px] ${call.missed ? "text-[#ea0038]" : "text-[#00a884]"} font-bold`}>
+                          call_received
+                        </span>
+                      ) : (
+                        <span className="material-symbols-outlined text-[17px] text-[#00a884] font-bold">
+                          call_made
+                        </span>
+                      )}
+                      <span className="truncate">{call.time}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Call Icon Button on Right */}
-              <button className="p-2 text-[#54656f] hover:bg-zinc-100 rounded-full transition-colors active:scale-95 shrink-0 ml-2">
-                <span className="material-symbols-outlined text-[23px]">call</span>
-              </button>
-            </div>
-          ))}
+                {/* Call Icon Button on Right */}
+                <button className="p-2 text-[#54656f] hover:bg-zinc-100 rounded-full transition-colors active:scale-95 shrink-0 ml-2">
+                  <span className="material-symbols-outlined text-[23px]">call</span>
+                </button>
+              </div>
+            ))
+          )}
           {/* Natural scroll spacers */}
           <div className="h-10"></div>
         </section>

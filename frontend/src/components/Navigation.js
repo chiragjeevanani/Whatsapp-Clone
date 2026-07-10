@@ -1,10 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { motion, useTransform } from "framer-motion";
+import { motion, useTransform, useMotionValue } from "framer-motion";
 
 export default function Navigation({ activeTab, dragX, width, onTabChange }) {
   const router = useRouter();
+  const fallbackDragX = useMotionValue(0);
+  const resolvedDragX = dragX || fallbackDragX;
 
   const tabs = [
     { id: "chats", label: "Chats", icon: "chat", path: "/chats", badge: "99+" },
@@ -16,7 +18,7 @@ export default function Navigation({ activeTab, dragX, width, onTabChange }) {
   const activeIndex = tabs.findIndex((t) => t.id === activeTab);
 
   // Transform page drag offset to active tab index fractionally
-  const fractionalIndex = useTransform(dragX || { get: () => 0 }, (val) => {
+  const fractionalIndex = useTransform(resolvedDragX, (val) => {
     if (!width) return activeIndex !== -1 ? activeIndex : 0;
     return -val / width;
   });

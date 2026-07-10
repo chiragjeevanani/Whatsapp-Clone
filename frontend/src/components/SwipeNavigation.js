@@ -60,7 +60,7 @@ export default function SwipeNavigation({ children }) {
 
   const handleTabChange = (index) => {
     setLocalIndex(index);
-    router.push(TABS[index]);
+    window.history.pushState(null, "", TABS[index]);
   };
 
   const handleDragEnd = (event, info) => {
@@ -80,7 +80,7 @@ export default function SwipeNavigation({ children }) {
 
     if (targetIndex !== localIndex) {
       setLocalIndex(targetIndex);
-      router.push(TABS[targetIndex]);
+      window.history.pushState(null, "", TABS[targetIndex]);
     }
   };
 
