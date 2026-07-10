@@ -11,11 +11,17 @@ import {
   Send, 
   Settings, 
   LogOut,
-  FileText
+  FileText,
+  Code
 } from "lucide-react";
 
-export default function Sidebar({ activeSegment }) {
-  const menuItems = [
+export default function Sidebar({ activeSegment, role }) {
+  const businessName = typeof window !== "undefined" ? localStorage.getItem("zetto_current_business") : "";
+  const devHref = role === "business" && businessName 
+    ? `/developer?business=${encodeURIComponent(businessName)}&role=business`
+    : "/developer";
+
+  const allItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, segment: "dashboard" },
     { name: "Users", href: "/users", icon: Users, segment: "users" },
     { name: "Chats", href: "/chats", icon: MessageSquare, segment: "chats" },
@@ -24,9 +30,14 @@ export default function Sidebar({ activeSegment }) {
     { name: "Calls", href: "/calls", icon: PhoneCall, segment: "calls" },
     { name: "Moderation", href: "/moderation", icon: AlertOctagon, segment: "moderation", badge: 14 },
     { name: "Broadcasts", href: "/broadcasts", icon: Send, segment: "broadcasts" },
+    { name: "Developer API", href: devHref, icon: Code, segment: "developer" },
     { name: "Settings", href: "/settings", icon: Settings, segment: "settings" },
     { name: "System Logs", href: "/logs", icon: FileText, segment: "logs" }
   ];
+
+  const menuItems = role === "business" 
+    ? allItems.filter(item => item.segment === "developer" || item.segment === "settings")
+    : allItems;
 
   return (
     <aside className="w-64 border-r border-border bg-card flex flex-col h-screen sticky top-0 shrink-0 select-none transition-colors duration-200">
