@@ -1,15 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useCallback } from "react";
 
 export default function WelcomePage() {
   const router = useRouter();
 
-  const handleAgree = () => {
+  const handleAgree = useCallback(() => {
     router.push("/login");
-  };
+  }, [router]);
 
   return (
     <main className="flex-1 flex flex-col items-center justify-center px-4 md:px-10 py-8 w-full max-w-md mx-auto min-h-screen">
@@ -19,6 +19,7 @@ export default function WelcomePage() {
           alt="Connectivity Illustration"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFyMdxP0Fj0oErfa8bs_tM7YaCIJNp474oXvofCsy1NXkNnsDqchpHRpkgDDuuL2-2PeZQNGVKyOli0Dwf0eemNtiKKxR-ElFhk4jranw8UTwcN3SErUnNd4Z1zIrqdbnqJ3aq8otsjpTUDV9NJPpEweKaXuoLVrASA5iGcGx8VWWkkNW3TuIFmKgYMkgUfUyuFkxTMz-LOulPgxCLJ_nG_29-XpVGIBPlxBV5Y0m8Br-NOM-dOGRY7GkdvJd5wKkBO_G4KKCdqaI"
+          decoding="async"
         />
       </div>
 

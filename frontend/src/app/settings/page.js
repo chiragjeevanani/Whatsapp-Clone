@@ -1,14 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navigation from "@/components/Navigation";
+import { useTheme } from "@/hooks/useTheme";
+
+const SETTINGS_LIST = [
+  { name: "Account", subtitle: "Security notifications, change number", icon: "key" },
+  { name: "Privacy", subtitle: "Blocked accounts, disappearing messages", icon: "lock" },
+  { name: "Lists", subtitle: "Manage people and groups", icon: "contact_phone" },
+  { name: "Chats", subtitle: "Theme, wallpapers, chat history", icon: "chat" },
+  { name: "Appearance", subtitle: "Chat theme, app icon, app theme", icon: "palette" },
+  { name: "Broadcasts", subtitle: "Manage lists and send broadcasts", icon: "podcasts" },
+  { name: "Notifications", subtitle: "Message, group & call tones", icon: "notifications" },
+  { name: "Storage and data", subtitle: "Network usage, auto-download", icon: "data_usage" },
+  { name: "Help and feedback", subtitle: "Help centre, contact us, privacy policy", icon: "help" },
+  { name: "Invite a friend", subtitle: null, icon: "group" },
+  { name: "App updates", subtitle: null, icon: "system_update_alt" },
+];
 
 export default function SettingsPage() {
   const router = useRouter();
   
-  // Theme state
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { isDarkMode, toggleTheme } = useTheme();
   
   // Sub-page navigation: null = main list, "account", "privacy", "lists", "chats", "broadcasts", "notifications"
   const [subPage, setSubPage] = useState(null);
@@ -39,57 +53,28 @@ export default function SettingsPage() {
   const [lessDataForCalls, setLessDataForCalls] = useState(true);
 
   useEffect(() => {
-    // Sync dark mode on load
-    setIsDarkMode(document.documentElement.classList.contains("dark"));
-
+    let ticking = false;
     const handleScroll = () => {
-      if (window.scrollY > 150) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 150);
+          ticking = false;
+        });
+        ticking = true;
       }
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const toggleTheme = () => {
-    const nextDark = !isDarkMode;
-    setIsDarkMode(nextDark);
-    if (nextDark) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.add("light");
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
-
-  const handleEditProfileSubmit = (e) => {
+  const handleEditProfileSubmit = useCallback((e) => {
     e.preventDefault();
     if (editName.trim()) {
       setDisplayName(editName.trim());
       setUsername(editUser.trim().startsWith("@") ? editUser.trim() : `@${editUser.trim()}`);
       setShowEditModal(false);
     }
-  };
-
-  // Main settings list
-  const settingsList = [
-    { name: "Account", subtitle: "Security notifications, change number", icon: "key" },
-    { name: "Privacy", subtitle: "Blocked accounts, disappearing messages", icon: "lock" },
-    { name: "Lists", subtitle: "Manage people and groups", icon: "contact_phone" },
-    { name: "Chats", subtitle: "Theme, wallpapers, chat history", icon: "chat" },
-    { name: "Appearance", subtitle: "Chat theme, app icon, app theme", icon: "palette" },
-    { name: "Broadcasts", subtitle: "Manage lists and send broadcasts", icon: "podcasts" },
-    { name: "Notifications", subtitle: "Message, group & call tones", icon: "notifications" },
-    { name: "Storage and data", subtitle: "Network usage, auto-download", icon: "data_usage" },
-    { name: "Help and feedback", subtitle: "Help centre, contact us, privacy policy", icon: "help" },
-    { name: "Invite a friend", subtitle: null, icon: "group" },
-    { name: "App updates", subtitle: null, icon: "system_update_alt" },
-  ];
+  }, [editName, editUser]);
 
   // ==========================================
   // SUB-PAGES RENDERING
@@ -884,6 +869,8 @@ export default function SettingsPage() {
                 alt="Profile" 
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtSTDTUitRQB5aG-ZcdFAsyFdP86mWxvW55CsH3fDZwlfJQzUR8Xav3ghPt6k07h7ujn8WjMnfUwokeODYvQGKKOm7F33aNS0EEnqaoctdIhY8ELBRO8tQR6mKm8_M0WvqegMqhtKgIxXjkXMfUbV5OAZ2iz0uoTKeVH-5FFp1KbmYjoXhls-OIQUHDnNB91KgpZba0PQ5hk-LVeGan4gFJdAzjvJk3mHfnEHBA8mO8nDZBHLChXewILCZaO_GNayQUdKeTWP5oeQ" 
                 className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
             </div>
 
@@ -902,7 +889,7 @@ export default function SettingsPage() {
 
         {/* Scrollable list of Settings options */}
         <div className="flex flex-col bg-white dark:bg-[#0b141a] py-1 pb-16">
-          {settingsList.map((item, idx) => (
+          {SETTINGS_LIST.map((item, idx) => (
             <div 
               key={idx}
               onClick={() => {

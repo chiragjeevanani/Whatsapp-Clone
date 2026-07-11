@@ -1,9 +1,269 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import Navigation from "@/components/Navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "@/hooks/useTheme";
+
+const INITIAL_CHATS = [
+  {
+    id: "appzeto-official",
+    name: "Appzeto_Official",
+    avatar: null,
+    avatarText: "Appzeto",
+    avatarBg: "bg-teal-50 text-teal-600 font-bold border border-teal-100",
+    time: "15/06/2026",
+    message: "appzeto hr Sir removed +91 74899 09308",
+    unread: 0,
+    isGroup: true,
+    isPinned: true,
+    doubleCheck: false,
+  },
+  {
+    id: "chirag",
+    name: "Chirag (You)",
+    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuBtSTDTUitRQB5aG-ZcdFAsyFdP86mWxvW55CsH3fDZwlfJQzUR8Xav3ghPt6k07h7ujn8WjMnfUwokeODYvQGKKOm7F33aNS0EEnqaoctdIhY8ELBRO8tQR6mKm8_M0WvqegMqhtKgIxXjkXMfUbV5OAZ2iz0uoTKeVH-5FFp1KbmYjoXhls-OIQUHDnNB91KgpZba0PQ5hk-LVeGan4gFJdAzjvJk3mHfnEHBA8mO8nDZBHLChXewILCZaO_GNayQUdKeTWP5oeQ",
+    time: "11:33",
+    message: "Photo",
+    unread: 0,
+    isGroup: false,
+    isPinned: true,
+    doubleCheck: true,
+    hasPhotoIcon: true,
+    isFavourite: true,
+  },
+  {
+    id: "kittu",
+    name: "Kittu",
+    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuD209t6Zin8k_HGjBSvGIRB_KONmSIL8sbz2S-MQFb6yxRje3Ge3PGp-yyOH_yZg4mCb_u8FkyApwL2yhfjFnLSiwHkH3lawFQHkpZmSRXx5D7BGsdZYSdvP6PhIeM3t9PjrvbV02NUdZMoHPGEZ-ZwJRlrv8enxQjqxirmtclZn9U_UQz7m55E9_VQNGreM6hRVv44INUgYZ7PQRf4Oct93w5plsG6f9LeRAuAOZt_QSgliP9AOs46NF7TylHhikGVRGfXyCWVFLo",
+    time: "12:49",
+    message: "https://youtu.be/uBotyv_TSZg",
+    unread: 0,
+    isGroup: false,
+    isPinned: false,
+    doubleCheck: false,
+    isFavourite: true,
+  },
+  {
+    id: "linkage-cocio",
+    name: "Linkage Cocio mobile application devel...",
+    avatar: null,
+    avatarBg: "bg-orange-100 text-orange-500",
+    time: "12:44",
+    message: "+91 93040 31739: @all It is very sad to s...",
+    unread: 7,
+    isGroup: true,
+    isPinned: false,
+    doubleCheck: false,
+    hasMention: true,
+  },
+  {
+    id: "rydox-master",
+    name: "Rydox Master Product + Franchisee M...",
+    avatar: null,
+    avatarBg: "bg-emerald-100 text-emerald-600",
+    time: "12:10",
+    message: "Sagar | Appzeto: @all",
+    unread: 65,
+    isGroup: true,
+    isPinned: false,
+    doubleCheck: false,
+    hasMention: true,
+  },
+  {
+    id: "sunil-kumar",
+    name: "Sunil Kumar HS Application Developm...",
+    avatar: null,
+    avatarBg: "bg-amber-100 text-amber-700",
+    time: "12:09",
+    message: "+91 98452 96998: Pricing will be on category",
+    unread: 7,
+    isGroup: true,
+    isPinned: false,
+    doubleCheck: false,
+    isArchived: true,
+  },
+  {
+    id: "cleanzo",
+    name: "Cleanzo Android+iOS mobile Applicati...",
+    avatar: null,
+    avatarBg: "bg-blue-100 text-blue-600",
+    avatarText: "Cleanzo",
+    time: "12:07",
+    message: "Ujjawal appzeto: Okay sir",
+    unread: 18,
+    isGroup: true,
+    isPinned: false,
+    doubleCheck: false,
+    isArchived: true,
+  },
+  {
+    id: "sui-iac",
+    name: "SUI IAC BTech CSE 2022-26 Passout",
+    avatar: null,
+    avatarBg: "bg-rose-100 text-rose-700",
+    avatarText: "SUI",
+    time: "Yesterday",
+    message: "Dr Meenakshi Joshi Maam Sage: 📷 CAMPU...",
+    unread: 2,
+    isGroup: true,
+    isPinned: false,
+    doubleCheck: false,
+    isArchived: true,
+  },
+  {
+    id: "sikh-street",
+    name: "Sikh Street (Android iOS)",
+    avatar: null,
+    avatarBg: "bg-emerald-100 text-emerald-600",
+    time: "18:41",
+    message: "Amit: Definitely sir",
+    unread: 10,
+    isGroup: true,
+    isPinned: false,
+    doubleCheck: false,
+    isLocked: true,
+  },
+  {
+    id: "stuti-pyarii",
+    name: "Stuti Pyarii Bhnaaa✨",
+    avatar: null,
+    avatarBg: "bg-rose-100 text-rose-700",
+    time: "17:58",
+    message: "Abhi tk kuch bnaya h ya ni phle toh ye btaoo",
+    unread: 0,
+    isGroup: false,
+    isPinned: false,
+    doubleCheck: false,
+    isLocked: true,
+  },
+  {
+    id: "web-app-ankit",
+    name: "Web App Ankit",
+    avatar: null,
+    avatarBg: "bg-orange-100 text-orange-600",
+    time: "Yesterday",
+    message: "+91 93019 88718: 📄 quickemart_deliver...",
+    unread: 1,
+    isGroup: false,
+    isPinned: false,
+    doubleCheck: false,
+    isArchived: true,
+  },
+  {
+    id: "appzeto-hr-sir",
+    name: "appzeto hr Sir",
+    avatar: null,
+    avatarBg: "bg-zinc-100 text-zinc-600",
+    time: "Yesterday",
+    message: "ok",
+    unread: 0,
+    isGroup: false,
+    isPinned: false,
+    doubleCheck: false,
+    isArchived: true,
+  },
+  {
+    id: "app-store-deployment",
+    name: "App Store Deployment (IOS)",
+    avatar: null,
+    avatarBg: "bg-indigo-100 text-indigo-700",
+    time: "18:04",
+    message: "+91 83499 36670: @Prachi Porwal Appzeto",
+    unread: 6,
+    isGroup: true,
+    isPinned: false,
+    doubleCheck: false,
+  },
+  {
+    id: "sagar-appzeto",
+    name: "Sagar Appzeto",
+    avatar: null,
+    avatarBg: "bg-rose-100 text-rose-700",
+    time: "15:20",
+    message: "Please check the build",
+    unread: 0,
+    isGroup: false,
+    isPinned: false,
+    doubleCheck: true,
+  },
+  {
+    id: "rahul-sharma",
+    name: "Rahul Sharma",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&fit=crop&q=80",
+    time: "14:15",
+    message: "Will meet tomorrow at 10 AM",
+    unread: 2,
+    isGroup: false,
+    isPinned: false,
+    doubleCheck: false,
+    isFavourite: true,
+  },
+  {
+    id: "hr-recruiter",
+    name: "HR Recruiter Zetto",
+    avatar: null,
+    avatarBg: "bg-teal-100 text-teal-700",
+    time: "Yesterday",
+    message: "Welcome to the team!",
+    unread: 0,
+    isGroup: false,
+    isPinned: false,
+    doubleCheck: true,
+  },
+];
+
+const CONTACTS_LIST = [
+  {
+    id: "chirag-you",
+    name: "Chirag (You)",
+    subtext: "Message yourself",
+    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuBtSTDTUitRQB5aG-ZcdFAsyFdP86mWxvW55CsH3fDZwlfJQzUR8Xav3ghPt6k07h7ujn8WjMnfUwokeODYvQGKKOm7F33aNS0EEnqaoctdIhY8ELBRO8tQR6mKm8_M0WvqegMqhtKgIxXjkXMfUbV5OAZ2iz0uoTKeVH-5FFp1KbmYjoXhls-OIQUHDnNB91KgpZba0PQ5hk-LVeGan4gFJdAzjvJk3mHfnEHBA8mO8nDZBHLChXewILCZaO_GNayQUdKeTWP5oeQ",
+  },
+  {
+    id: "c1",
+    name: "******8547",
+    avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=100&fit=crop&q=80",
+  },
+  {
+    id: "c2",
+    name: "+91 95105 91925",
+    avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&fit=crop&q=80",
+  },
+  {
+    id: "c3",
+    name: "~Mahi Tanpure Sage",
+    avatarBg: "bg-purple-100 text-purple-700",
+    avatarIcon: "person",
+  },
+  {
+    id: "c4",
+    name: "Aakash Sage",
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&fit=crop&q=80",
+  },
+  {
+    id: "c5",
+    name: "Aashay",
+    avatarBg: "bg-blue-100 text-blue-700",
+    avatarText: "A",
+  },
+  {
+    id: "c6",
+    name: "Aashutosh Malviya Sage",
+    avatarBg: "bg-orange-100 text-orange-700",
+    avatarText: "AM",
+  },
+  {
+    id: "c7",
+    name: "Aayushi Sage",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&fit=crop&q=80",
+  },
+  {
+    id: "c8",
+    name: "Abhay",
+    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&fit=crop&q=80",
+  },
+];
 
 export default function ChatsPage() {
   const router = useRouter();
@@ -17,20 +277,10 @@ export default function ChatsPage() {
   const [showArchivedChatsList, setShowArchivedChatsList] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
-  useEffect(() => {
-    const theme = localStorage.getItem("theme");
-    const isDark = theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    setIsDarkMode(isDark);
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
-    } else {
-      document.documentElement.classList.add("light");
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
+  const { isDarkMode, toggleTheme } = useTheme();
+
+  const [chats, setChats] = useState(() => INITIAL_CHATS);
 
   useEffect(() => {
     const shouldHide = !!(showLockedChatsList || showArchivedChatsList);
@@ -40,285 +290,11 @@ export default function ChatsPage() {
     };
   }, [showLockedChatsList, showArchivedChatsList]);
 
-  const toggleTheme = () => {
-    const nextDark = !isDarkMode;
-    setIsDarkMode(nextDark);
-    if (nextDark) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.add("light");
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
-
-  const [chats, setChats] = useState([
-    {
-      id: "appzeto-official",
-      name: "Appzeto_Official",
-      avatar: null,
-      avatarText: "Appzeto",
-      avatarBg: "bg-teal-50 text-teal-600 font-bold border border-teal-100",
-      time: "15/06/2026",
-      message: "appzeto hr Sir removed +91 74899 09308",
-      unread: 0,
-      isGroup: true,
-      isPinned: true,
-      doubleCheck: false,
-    },
-    {
-      id: "chirag",
-      name: "Chirag (You)",
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuBtSTDTUitRQB5aG-ZcdFAsyFdP86mWxvW55CsH3fDZwlfJQzUR8Xav3ghPt6k07h7ujn8WjMnfUwokeODYvQGKKOm7F33aNS0EEnqaoctdIhY8ELBRO8tQR6mKm8_M0WvqegMqhtKgIxXjkXMfUbV5OAZ2iz0uoTKeVH-5FFp1KbmYjoXhls-OIQUHDnNB91KgpZba0PQ5hk-LVeGan4gFJdAzjvJk3mHfnEHBA8mO8nDZBHLChXewILCZaO_GNayQUdKeTWP5oeQ",
-      time: "11:33",
-      message: "Photo",
-      unread: 0,
-      isGroup: false,
-      isPinned: true,
-      doubleCheck: true,
-      hasPhotoIcon: true,
-      isFavourite: true,
-    },
-    {
-      id: "kittu",
-      name: "Kittu",
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuD209t6Zin8k_HGjBSvGIRB_KONmSIL8sbz2S-MQFb6yxRje3Ge3PGp-yyOH_yZg4mCb_u8FkyApwL2yhfjFnLSiwHkH3lawFQHkpZmSRXx5D7BGsdZYSdvP6PhIeM3t9PjrvbV02NUdZMoHPGEZ-ZwJRlrv8enxQjqxirmtclZn9U_UQz7m55E9_VQNGreM6hRVv44INUgYZ7PQRf4Oct93w5plsG6f9LeRAuAOZt_QSgliP9AOs46NF7TylHhikGVRGfXyCWVFLo",
-      time: "12:49",
-      message: "https://youtu.be/uBotyv_TSZg",
-      unread: 0,
-      isGroup: false,
-      isPinned: false,
-      doubleCheck: false,
-      isFavourite: true,
-    },
-    {
-      id: "linkage-cocio",
-      name: "Linkage Cocio mobile application devel...",
-      avatar: null,
-      avatarBg: "bg-orange-100 text-orange-500",
-      time: "12:44",
-      message: "+91 93040 31739: @all It is very sad to s...",
-      unread: 7,
-      isGroup: true,
-      isPinned: false,
-      doubleCheck: false,
-      hasMention: true,
-    },
-    {
-      id: "rydox-master",
-      name: "Rydox Master Product + Franchisee M...",
-      avatar: null,
-      avatarBg: "bg-emerald-100 text-emerald-600",
-      time: "12:10",
-      message: "Sagar | Appzeto: @all",
-      unread: 65,
-      isGroup: true,
-      isPinned: false,
-      doubleCheck: false,
-      hasMention: true,
-    },
-    {
-      id: "sunil-kumar",
-      name: "Sunil Kumar HS Application Developm...",
-      avatar: null,
-      avatarBg: "bg-amber-100 text-amber-700",
-      time: "12:09",
-      message: "+91 98452 96998: Pricing will be on category",
-      unread: 7,
-      isGroup: true,
-      isPinned: false,
-      doubleCheck: false,
-      isArchived: true,
-    },
-    {
-      id: "cleanzo",
-      name: "Cleanzo Android+iOS mobile Applicati...",
-      avatar: null,
-      avatarBg: "bg-blue-100 text-blue-600",
-      avatarText: "Cleanzo",
-      time: "12:07",
-      message: "Ujjawal appzeto: Okay sir",
-      unread: 18,
-      isGroup: true,
-      isPinned: false,
-      doubleCheck: false,
-      isArchived: true,
-    },
-    {
-      id: "sui-iac",
-      name: "SUI IAC BTech CSE 2022-26 Passout",
-      avatar: null,
-      avatarBg: "bg-rose-100 text-rose-700",
-      avatarText: "SUI",
-      time: "Yesterday",
-      message: "Dr Meenakshi Joshi Maam Sage: 📷 CAMPU...",
-      unread: 2,
-      isGroup: true,
-      isPinned: false,
-      doubleCheck: false,
-      isArchived: true,
-    },
-    {
-      id: "sikh-street",
-      name: "Sikh Street (Android iOS)",
-      avatar: null,
-      avatarBg: "bg-emerald-100 text-emerald-600",
-      time: "18:41",
-      message: "Amit: Definitely sir",
-      unread: 10,
-      isGroup: true,
-      isPinned: false,
-      doubleCheck: false,
-      isLocked: true,
-    },
-    {
-      id: "stuti-pyarii",
-      name: "Stuti Pyarii Bhnaaa✨",
-      avatar: null,
-      avatarBg: "bg-rose-100 text-rose-700",
-      time: "17:58",
-      message: "Abhi tk kuch bnaya h ya ni phle toh ye btaoo",
-      unread: 0,
-      isGroup: false,
-      isPinned: false,
-      doubleCheck: false,
-      isLocked: true,
-    },
-    {
-      id: "web-app-ankit",
-      name: "Web App Ankit",
-      avatar: null,
-      avatarBg: "bg-orange-100 text-orange-600",
-      time: "Yesterday",
-      message: "+91 93019 88718: 📄 quickemart_deliver...",
-      unread: 1,
-      isGroup: false,
-      isPinned: false,
-      doubleCheck: false,
-      isArchived: true,
-    },
-    {
-      id: "appzeto-hr-sir",
-      name: "appzeto hr Sir",
-      avatar: null,
-      avatarBg: "bg-zinc-100 text-zinc-600",
-      time: "Yesterday",
-      message: "ok",
-      unread: 0,
-      isGroup: false,
-      isPinned: false,
-      doubleCheck: false,
-      isArchived: true,
-    },
-    {
-      id: "app-store-deployment",
-      name: "App Store Deployment (IOS)",
-      avatar: null,
-      avatarBg: "bg-indigo-100 text-indigo-700",
-      time: "18:04",
-      message: "+91 83499 36670: @Prachi Porwal Appzeto",
-      unread: 6,
-      isGroup: true,
-      isPinned: false,
-      doubleCheck: false,
-    },
-    {
-      id: "sagar-appzeto",
-      name: "Sagar Appzeto",
-      avatar: null,
-      avatarBg: "bg-rose-100 text-rose-700",
-      time: "15:20",
-      message: "Please check the build",
-      unread: 0,
-      isGroup: false,
-      isPinned: false,
-      doubleCheck: true,
-    },
-    {
-      id: "rahul-sharma",
-      name: "Rahul Sharma",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&fit=crop&q=80",
-      time: "14:15",
-      message: "Will meet tomorrow at 10 AM",
-      unread: 2,
-      isGroup: false,
-      isPinned: false,
-      doubleCheck: false,
-      isFavourite: true,
-    },
-    {
-      id: "hr-recruiter",
-      name: "HR Recruiter Zetto",
-      avatar: null,
-      avatarBg: "bg-teal-100 text-teal-700",
-      time: "Yesterday",
-      message: "Welcome to the team!",
-      unread: 0,
-      isGroup: false,
-      isPinned: false,
-      doubleCheck: true,
-    },
-  ]);
-
-  const contactsList = [
-    {
-      id: "chirag-you",
-      name: "Chirag (You)",
-      subtext: "Message yourself",
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuBtSTDTUitRQB5aG-ZcdFAsyFdP86mWxvW55CsH3fDZwlfJQzUR8Xav3ghPt6k07h7ujn8WjMnfUwokeODYvQGKKOm7F33aNS0EEnqaoctdIhY8ELBRO8tQR6mKm8_M0WvqegMqhtKgIxXjkXMfUbV5OAZ2iz0uoTKeVH-5FFp1KbmYjoXhls-OIQUHDnNB91KgpZba0PQ5hk-LVeGan4gFJdAzjvJk3mHfnEHBA8mO8nDZBHLChXewILCZaO_GNayQUdKeTWP5oeQ",
-    },
-    {
-      id: "c1",
-      name: "******8547",
-      avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=100&fit=crop&q=80",
-    },
-    {
-      id: "c2",
-      name: "+91 95105 91925",
-      avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&fit=crop&q=80",
-    },
-    {
-      id: "c3",
-      name: "~Mahi Tanpure Sage",
-      avatarBg: "bg-purple-100 text-purple-700",
-      avatarIcon: "person",
-    },
-    {
-      id: "c4",
-      name: "Aakash Sage",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&fit=crop&q=80",
-    },
-    {
-      id: "c5",
-      name: "Aashay",
-      avatarBg: "bg-blue-100 text-blue-700",
-      avatarText: "A",
-    },
-    {
-      id: "c6",
-      name: "Aashutosh Malviya Sage",
-      avatarBg: "bg-orange-100 text-orange-700",
-      avatarText: "AM",
-    },
-    {
-      id: "c7",
-      name: "Aayushi Sage",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&fit=crop&q=80",
-    },
-    {
-      id: "c8",
-      name: "Abhay",
-      avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&fit=crop&q=80",
-    },
-  ];
-
-  const handleChatClick = (id) => {
+  const handleChatClick = useCallback((id) => {
     router.push(`/chats/${id}`);
-  };
+  }, [router]);
 
-  const handlePinSubmit = (e) => {
+  const handlePinSubmit = useCallback((e) => {
     e.preventDefault();
     if (pinValue === "1234") {
       setIsPinError(false);
@@ -327,7 +303,30 @@ export default function ChatsPage() {
     } else {
       setIsPinError(true);
     }
-  };
+  }, [pinValue]);
+
+  const archivedChatsCount = useMemo(() => {
+    return chats.filter(c => c.isArchived).length;
+  }, [chats]);
+
+  const filteredChats = useMemo(() => {
+    return chats
+      .filter(chat => !chat.isLocked && !chat.isArchived)
+      .filter((chat) => {
+        if (activeFilter === "unread") return chat.unread > 0;
+        if (activeFilter === "favourites") return chat.isFavourite;
+        if (activeFilter === "groups") return chat.isGroup;
+        return true;
+      });
+  }, [chats, activeFilter]);
+
+  const lockedChats = useMemo(() => {
+    return chats.filter(chat => chat.isLocked);
+  }, [chats]);
+
+  const archivedChats = useMemo(() => {
+    return chats.filter(chat => chat.isArchived);
+  }, [chats]);
 
   // 1. SELECT CONTACT OVERLAY VIEW (NEW CHAT FAB)
   if (showSelectContact) {
@@ -399,7 +398,7 @@ export default function ChatsPage() {
             Contacts on Zetto
           </div>
           <div className="flex flex-col pb-10">
-            {contactsList.map((c) => (
+            {CONTACTS_LIST.map((c) => (
               <div
                 key={c.id}
                 onClick={() => {
@@ -409,7 +408,7 @@ export default function ChatsPage() {
                 className="flex items-center gap-3.5 py-3 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
               >
                 {c.avatar ? (
-                  <img className="w-[44px] h-[44px] rounded-full object-cover border border-zinc-100 shrink-0" src={c.avatar} alt={c.name} />
+                  <img className="w-[44px] h-[44px] rounded-full object-cover border border-zinc-100 shrink-0" src={c.avatar} alt={c.name} loading="lazy" decoding="async" />
                 ) : (
                   <div className={`w-[44px] h-[44px] rounded-full flex items-center justify-center ${c.avatarBg} shrink-0 text-sm font-bold`}>
                     {c.avatarIcon ? (
@@ -614,23 +613,15 @@ export default function ChatsPage() {
           <span className="text-[16px] font-semibold text-[#1c2e35] tracking-wide">Archived</span>
         </div>
         <span className="text-[12.5px] font-bold text-[#00a884] mr-1">
-          {chats.filter(c => c.isArchived).length}
+          {archivedChatsCount}
         </span>
       </div>
 
       {/* Chat List */}
       <main className="flex-1 w-full">
         <ul className="flex flex-col">
-          {chats
-            .filter(chat => !chat.isLocked && !chat.isArchived)
-            .filter((chat) => {
-              if (activeFilter === "unread") return chat.unread > 0;
-              if (activeFilter === "favourites") return chat.isFavourite;
-              if (activeFilter === "groups") return chat.isGroup;
-              return true;
-            })
-            .map((chat) => (
-              <li
+          {filteredChats.map((chat) => (
+            <li
               key={chat.id}
               onClick={() => handleChatClick(chat.id)}
               className="flex items-center px-4 py-3 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
@@ -645,7 +636,7 @@ export default function ChatsPage() {
               >
                 {chat.avatar ? (
                   <div className="w-[52px] h-[52px] rounded-full overflow-hidden border border-zinc-100">
-                    <img alt={chat.name} className="w-full h-full object-cover" src={chat.avatar} />
+                    <img alt={chat.name} className="w-full h-full object-cover" src={chat.avatar} loading="lazy" decoding="async" />
                   </div>
                 ) : (
                   <div className={`w-[52px] h-[52px] rounded-full flex items-center justify-center ${chat.avatarBg || "bg-[#dfe5e7] text-[#54656f]"} font-semibold text-sm overflow-hidden`}>
@@ -755,6 +746,8 @@ export default function ChatsPage() {
                     src={quickProfileChat.avatar} 
                     alt={quickProfileChat.name} 
                     className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <div className={`w-full h-full flex items-center justify-center ${quickProfileChat.avatarBg || "bg-[#dfe5e7] text-[#54656f]"} font-semibold text-lg`}>
@@ -891,7 +884,7 @@ export default function ChatsPage() {
           {/* List of Locked Chats */}
           <main className="flex-1 overflow-y-auto">
             <ul className="flex flex-col">
-              {chats.filter(chat => chat.isLocked).map((chat) => (
+              {lockedChats.map((chat) => (
                 <li
                   key={chat.id}
                   onClick={() => {
@@ -904,7 +897,7 @@ export default function ChatsPage() {
                   <div className="relative shrink-0 mr-3.5">
                     {chat.avatar ? (
                       <div className="w-[52px] h-[52px] rounded-full overflow-hidden border border-zinc-100">
-                        <img alt={chat.name} className="w-full h-full object-cover" src={chat.avatar} />
+                        <img alt={chat.name} className="w-full h-full object-cover" src={chat.avatar} loading="lazy" decoding="async" />
                       </div>
                     ) : (
                       <div className={`w-[52px] h-[52px] rounded-full flex items-center justify-center ${chat.avatarBg || "bg-[#dfe5e7] text-[#54656f]"} font-semibold text-sm overflow-hidden`}>
@@ -966,7 +959,7 @@ export default function ChatsPage() {
           {/* List of Archived Chats */}
           <main className="flex-1 overflow-y-auto">
             <ul className="flex flex-col">
-              {chats.filter(chat => chat.isArchived).map((chat) => (
+              {archivedChats.map((chat) => (
                 <li
                   key={chat.id}
                   onClick={() => {
@@ -979,7 +972,7 @@ export default function ChatsPage() {
                   <div className="relative shrink-0 mr-3.5">
                     {chat.avatar ? (
                       <div className="w-[52px] h-[52px] rounded-full overflow-hidden border border-zinc-100">
-                        <img alt={chat.name} className="w-full h-full object-cover" src={chat.avatar} />
+                        <img alt={chat.name} className="w-full h-full object-cover" src={chat.avatar} loading="lazy" decoding="async" />
                       </div>
                     ) : (
                       <div className={`w-[52px] h-[52px] rounded-full flex items-center justify-center ${chat.avatarBg || "bg-[#dfe5e7] text-[#54656f]"} font-semibold text-sm overflow-hidden`}>
