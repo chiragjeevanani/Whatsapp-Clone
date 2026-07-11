@@ -130,26 +130,17 @@ body {
   scrollbar-width: none;
 }
 
-/* Custom Font Utilities for Stitch Layouts */
-@utility font-display-lg {
-  font-family: 'Inter', sans-serif;
-}
+/* Custom Font Utilities for Stitch Layouts (inherited Inter font-family) */
 @utility text-display-lg {
   font-size: 30px;
   line-height: 38px;
   letter-spacing: -0.02em;
   font-weight: 700;
 }
-@utility font-headline-lg-mobile {
-  font-family: 'Inter', sans-serif;
-}
 @utility text-headline-lg-mobile {
   font-size: 24px;
   line-height: 32px;
   font-weight: 700;
-}
-@utility font-label-sm {
-  font-family: 'Inter', sans-serif;
 }
 @utility text-label-sm {
   font-size: 11px;
@@ -157,16 +148,10 @@ body {
   letter-spacing: 0.02em;
   font-weight: 500;
 }
-@utility font-headline-sm {
-  font-family: 'Inter', sans-serif;
-}
 @utility text-headline-sm {
   font-size: 18px;
   line-height: 24px;
   font-weight: 600;
-}
-@utility font-label-md {
-  font-family: 'Inter', sans-serif;
 }
 @utility text-label-md {
   font-size: 12px;
@@ -174,25 +159,16 @@ body {
   letter-spacing: 0.01em;
   font-weight: 500;
 }
-@utility font-headline-md {
-  font-family: 'Inter', sans-serif;
-}
 @utility text-headline-md {
   font-size: 20px;
   line-height: 28px;
   letter-spacing: -0.01em;
   font-weight: 600;
 }
-@utility font-body-md {
-  font-family: 'Inter', sans-serif;
-}
 @utility text-body-md {
   font-size: 14px;
   line-height: 20px;
   font-weight: 400;
-}
-@utility font-body-lg {
-  font-family: 'Inter', sans-serif;
 }
 @utility text-body-lg {
   font-size: 16px;
@@ -214,16 +190,19 @@ body {
   word-wrap: normal;
   direction: ltr;
   -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }
 
 .otp-input::-webkit-outer-spin-button,
 .otp-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
+  appearance: none;
   margin: 0;
 }
 .otp-input[type=number] {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 /* Floating Label Styles for Phone Login */
@@ -255,9 +234,12 @@ body {
 /* Force dark theme backgrounds */
 .dark body,
 .dark .bg-white,
-.dark .bg-surface-container-lowest,
 .dark [class*="bg-[#f8f9fa]"] {
   background-color: #0b141a !important;
+}
+
+.dark .bg-surface-container-lowest {
+  background-color: #111b21 !important;
 }
 
 .dark header.bg-white,
@@ -407,10 +389,4 @@ body {
     color: #ff2d55 !important;
 }
 
-.dark .bg-surface-container-lowest {
-  background-color: #111b21 !important;
-}
-
-.dark .bg-primary-container {
-  background-color: #ff2d55 !important;
-}
+/* Redundant overrides cleaned up */

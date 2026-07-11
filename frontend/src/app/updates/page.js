@@ -1,8 +1,110 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Navigation from "@/components/Navigation";
+
+const STATUS_CARDS = [
+  {
+    id: "praveen",
+    name: "Praveen Jaiswal Un...",
+    userName: "Peacerex Bbx",
+    time: "Today, 11:29",
+    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAwQrgxOsMS1XWAnphaxw8os32Nkd0OyGaUCh4ajkQScMRmv-tZ1xTQfgLOlboD17H-5Q8XkMsgCNonvqt7oUFQcAe9ryGmn9cMAwkTpD58X9U_qG-UwP9ppKXDU-pRgjA7JHMLu_PgtT8k6IT-DjpPsz4kD8EXPGEUwvOHGv-3Gw9lOpsIw9PDFwNQk5c3wN6I4ztIjpTTGJ5U7ltKTOxLJVo_lm-mJkMdAWjTxhFi9fhTDvbcQNsRRl1cG_7vSsSZto-zZwjvlPw",
+    bgImage: "https://images.unsplash.com/photo-1545128485-c400e7702796?w=600&auto=format&fit=crop&q=80",
+    caption: "Today, 25th june. No grains atleast.",
+  },
+  {
+    id: "balram",
+    name: "Balram Yadav Sage",
+    userName: "Balram Yadav Sage",
+    time: "Today, 10:45",
+    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuD209t6Zin8k_HGjBSvGIRB_KONmSIL8sbz2S-MQFb6yxRje3Ge3PGp-yyOH_yZg4mCb_u8FkyApwL2yhfjFnLSiwHkH3lawFQHkpZmSRXx5D7BGsdZYSdvP6PhIeM3t9PjrvbV02NUdZMoHPGEZ-ZwJRlrv8enxQjqxirmtclZn9U_UQz7m55E9_VQNGreM6hRVv44INUgYZ7PQRf4Oct93w5plsG6f9LeRAuAOZt_QSgliP9AOs46NF7TylHhikGVRGfXyCWVFLo",
+    bgImage: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&auto=format&fit=crop&q=80",
+    caption: "Working from home today!",
+  },
+  {
+    id: "yash",
+    name: "Yash Pathrod Voicestra S...",
+    userName: "Yash Pathrod",
+    time: "Today, 09:15",
+    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCl7HlttMM7jx4HR07t6nrc2b_3nNR8q8lyd7V8ZA2Md1Gqa2SmXeUp8cSN6CJgzOSKt5R3xt3nAX1gPx1CbRISUA_IDr7XGJ-UkDjmKNQvEpg20XG6pi-yFNFtpGI5x1pP5eXRKfYSmDXSt4-aGchA1tgO9tK7qyLbhjZx5tdQb9rvohEmN0OddYGOZQlEZGGhi82PFDcctsc-vKLcshgLwvy4jCt0HWGiOfUR3h2Pw0zw6V2J5b2md57LOMfEP0EiT9B-k1Pw6qI",
+    bgImage: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&auto=format&fit=crop&q=80",
+    caption: "Weekend vibes ☕",
+  },
+];
+
+const CHANNELS_LIST = [
+  {
+    id: "steal-deal",
+    name: "Steal The Deal & Collab ❤️",
+    avatarBg: "bg-black text-white",
+    avatarIcon: "shopping_bag",
+    message: "🔗 https://www.wishlink.com/share/6bnx...",
+    time: "10:49",
+    unread: 249,
+    followers: "1K followers",
+  },
+  {
+    id: "fast-otp",
+    name: "Fast otp",
+    avatarBg: "bg-[#dfe5e7] text-[#54656f]",
+    avatarIcon: "chat_bubble",
+    message: "Isko connect krke telegram use kr sakte ho",
+    time: "17/06/2026",
+    unread: 0,
+    followers: "850 followers",
+  },
+  {
+    id: "zero-investment",
+    name: "Zero_Investment_Work...📌",
+    avatarBg: "bg-emerald-100 text-emerald-700",
+    avatarIcon: "eco",
+    message: "📷 Message my Zetto number :- 9756336...",
+    time: "28/10/2025",
+    unread: 0,
+    followers: "12K followers",
+  },
+];
+
+const FIND_CHANNELS = [
+  {
+    id: "sarkari",
+    name: "Sarkari Result Official",
+    followers: "4M followers",
+    logoBg: "bg-red-600 text-white font-bold",
+    logoText: "Sarkari Result",
+  },
+  {
+    id: "gemini",
+    name: "Gemini Prompt ✨",
+    followers: "775K followers",
+    logoBg: "bg-gradient-to-tr from-indigo-500 via-purple-500 to-amber-500 text-white",
+    logoIcon: "star",
+  },
+  {
+    id: "flipkart",
+    name: "Flipkart",
+    followers: "1M followers",
+    logoBg: "bg-yellow-400 text-blue-800 font-bold",
+    logoText: "f",
+    verified: true,
+  },
+];
+
+const CONTACTS_DATA = [
+  { id: "swaanniiyaaaa", name: "Swaanniiyaaaa🕊️ ✨✨✨", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop&q=80", type: "frequent" },
+  { id: "aditi", name: "Aditi", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&fit=crop&q=80", type: "frequent" },
+  { id: "appzeto-hr", name: "appzeto hr Sir", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&fit=crop&q=80", type: "frequent" },
+  { id: "kittu", name: "Kittu", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&fit=crop&q=80", type: "frequent" },
+  { id: "ankit-sir", name: "Ankit sir appzeto", avatar: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=100&fit=crop&q=80", type: "frequent" },
+  { id: "vini-sage", name: "Vini Sage", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&fit=crop&q=80", type: "frequent" },
+  { id: "ujjawal", name: "Ujjawal appzeto", sub: "If it is textable then text, Don't call!", avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&fit=crop&q=80", type: "frequent" },
+  { id: "c8547", name: "******8547", avatar: null, type: "whatsapp" },
+  { id: "phone1", name: "+91 95105 91925", avatar: null, type: "whatsapp" },
+  { id: "phone2", name: "+919510591925", avatar: null, type: "whatsapp" },
+  { id: "mahi", name: "~Mahi Tanpure Sage", avatar: null, type: "whatsapp" },
+  { id: "c1111", name: "1111", avatar: null, type: "whatsapp" },
+];
 
 export default function UpdatesPage() {
   const router = useRouter();
@@ -40,9 +142,9 @@ export default function UpdatesPage() {
   // Starred Flow State
   const [starredFlow, setStarredFlow] = useState(false);
 
-  const toggleFollow = (channel) => {
+  const toggleFollow = useCallback((channel) => {
     setFollowing((prev) => ({ ...prev, [channel]: !prev[channel] }));
-  };
+  }, []);
 
   useEffect(() => {
     const shouldHide = !!(activeChannel || activeStatus || activeSuggestedChannel || channelFlowStep || statusPrivacyFlow || starredFlow);
@@ -62,93 +164,7 @@ export default function UpdatesPage() {
     }
   }, [channelFlowStep]);
 
-  const statusCards = [
-    {
-      id: "praveen",
-      name: "Praveen Jaiswal Un...",
-      userName: "Peacerex Bbx",
-      time: "Today, 11:29",
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAwQrgxOsMS1XWAnphaxw8os32Nkd0OyGaUCh4ajkQScMRmv-tZ1xTQfgLOlboD17H-5Q8XkMsgCNonvqt7oUFQcAe9ryGmn9cMAwkTpD58X9U_qG-UwP9ppKXDU-pRgjA7JHMLu_PgtT8k6IT-DjpPsz4kD8EXPGEUwvOHGv-3Gw9lOpsIw9PDFwNQk5c3wN6I4ztIjpTTGJ5U7ltKTOxLJVo_lm-mJkMdAWjTxhFi9fhTDvbcQNsRRl1cG_7vSsSZto-zZwjvlPw",
-      bgImage: "https://images.unsplash.com/photo-1545128485-c400e7702796?w=600&auto=format&fit=crop&q=80",
-      caption: "Today, 25th june. No grains atleast.",
-    },
-    {
-      id: "balram",
-      name: "Balram Yadav Sage",
-      userName: "Balram Yadav Sage",
-      time: "Today, 10:45",
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuD209t6Zin8k_HGjBSvGIRB_KONmSIL8sbz2S-MQFb6yxRje3Ge3PGp-yyOH_yZg4mCb_u8FkyApwL2yhfjFnLSiwHkH3lawFQHkpZmSRXx5D7BGsdZYSdvP6PhIeM3t9PjrvbV02NUdZMoHPGEZ-ZwJRlrv8enxQjqxirmtclZn9U_UQz7m55E9_VQNGreM6hRVv44INUgYZ7PQRf4Oct93w5plsG6f9LeRAuAOZt_QSgliP9AOs46NF7TylHhikGVRGfXyCWVFLo",
-      bgImage: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&auto=format&fit=crop&q=80",
-      caption: "Working from home today!",
-    },
-    {
-      id: "yash",
-      name: "Yash Pathrod Voicestra S...",
-      userName: "Yash Pathrod",
-      time: "Today, 09:15",
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCl7HlttMM7jx4HR07t6nrc2b_3nNR8q8lyd7V8ZA2Md1Gqa2SmXeUp8cSN6CJgzOSKt5R3xt3nAX1gPx1CbRISUA_IDr7XGJ-UkDjmKNQvEpg20XG6pi-yFNFtpGI5x1pP5eXRKfYSmDXSt4-aGchA1tgO9tK7qyLbhjZx5tdQb9rvohEmN0OddYGOZQlEZGGhi82PFDcctsc-vKLcshgLwvy4jCt0HWGiOfUR3h2Pw0zw6V2J5b2md57LOMfEP0EiT9B-k1Pw6qI",
-      bgImage: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&auto=format&fit=crop&q=80",
-      caption: "Weekend vibes ☕",
-    },
-  ];
-
-  const channelsList = [
-    {
-      id: "steal-deal",
-      name: "Steal The Deal & Collab ❤️",
-      avatarBg: "bg-black text-white",
-      avatarIcon: "shopping_bag",
-      message: "🔗 https://www.wishlink.com/share/6bnx...",
-      time: "10:49",
-      unread: 249,
-      followers: "1K followers",
-    },
-    {
-      id: "fast-otp",
-      name: "Fast otp",
-      avatarBg: "bg-[#dfe5e7] text-[#54656f]",
-      avatarIcon: "chat_bubble",
-      message: "Isko connect krke telegram use kr sakte ho",
-      time: "17/06/2026",
-      unread: 0,
-      followers: "850 followers",
-    },
-    {
-      id: "zero-investment",
-      name: "Zero_Investment_Work...📌",
-      avatarBg: "bg-emerald-100 text-emerald-700",
-      avatarIcon: "eco",
-      message: "📷 Message my Zetto number :- 9756336...",
-      time: "28/10/2025",
-      unread: 0,
-      followers: "12K followers",
-    },
-  ];
-
-  const findChannels = [
-    {
-      id: "sarkari",
-      name: "Sarkari Result Official",
-      followers: "4M followers",
-      logoBg: "bg-red-600 text-white font-bold",
-      logoText: "Sarkari Result",
-    },
-    {
-      id: "gemini",
-      name: "Gemini Prompt ✨",
-      followers: "775K followers",
-      logoBg: "bg-gradient-to-tr from-indigo-500 via-purple-500 to-amber-500 text-white",
-      logoIcon: "star",
-    },
-    {
-      id: "flipkart",
-      name: "Flipkart",
-      followers: "1M followers",
-      logoBg: "bg-yellow-400 text-blue-800 font-bold",
-      logoText: "f",
-      verified: true,
-    },
-  ];
+  // Static lists hoisted to module scope
 
   // Auto-advance progress bar for status viewer
   useEffect(() => {
@@ -170,9 +186,9 @@ export default function UpdatesPage() {
   // Transition to next status or exit when progress finishes
   useEffect(() => {
     if (activeStatus && progress >= 100) {
-      const currentIndex = statusCards.findIndex((s) => s.id === activeStatus.id);
-      if (currentIndex !== -1 && currentIndex < statusCards.length - 1) {
-        setActiveStatus(statusCards[currentIndex + 1]);
+      const currentIndex = STATUS_CARDS.findIndex((s) => s.id === activeStatus.id);
+      if (currentIndex !== -1 && currentIndex < STATUS_CARDS.length - 1) {
+        setActiveStatus(STATUS_CARDS[currentIndex + 1]);
         setProgress(0);
       } else {
         setActiveStatus(null);
@@ -180,7 +196,7 @@ export default function UpdatesPage() {
     }
   }, [progress, activeStatus]);
 
-  const handlePollVote = (option) => {
+  const handlePollVote = useCallback((option) => {
     if (selectedPollOption === option) return;
     
     setPollVotes((prev) => {
@@ -192,7 +208,7 @@ export default function UpdatesPage() {
       return updated;
     });
     setSelectedPollOption(option);
-  };
+  }, [selectedPollOption]);
 
   const totalVotes = pollVotes.yes + pollVotes.no;
   const yesPercentage = Math.round((pollVotes.yes / totalVotes) * 100) || 0;
@@ -202,20 +218,7 @@ export default function UpdatesPage() {
   // STATUS PRIVACY VIEW
   // ==========================================
   if (statusPrivacyFlow) {
-    const contactsData = [
-      { id: "swaanniiyaaaa", name: "Swaanniiyaaaa🕊️ ✨✨✨", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop&q=80", type: "frequent" },
-      { id: "aditi", name: "Aditi", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&fit=crop&q=80", type: "frequent" },
-      { id: "appzeto-hr", name: "appzeto hr Sir", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&fit=crop&q=80", type: "frequent" },
-      { id: "kittu", name: "Kittu", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&fit=crop&q=80", type: "frequent" },
-      { id: "ankit-sir", name: "Ankit sir appzeto", avatar: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=100&fit=crop&q=80", type: "frequent" },
-      { id: "vini-sage", name: "Vini Sage", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&fit=crop&q=80", type: "frequent" },
-      { id: "ujjawal", name: "Ujjawal appzeto", sub: "If it is textable then text, Don't call!", avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&fit=crop&q=80", type: "frequent" },
-      { id: "c8547", name: "******8547", avatar: null, type: "whatsapp" },
-      { id: "phone1", name: "+91 95105 91925", avatar: null, type: "whatsapp" },
-      { id: "phone2", name: "+919510591925", avatar: null, type: "whatsapp" },
-      { id: "mahi", name: "~Mahi Tanpure Sage", avatar: null, type: "whatsapp" },
-      { id: "c1111", name: "1111", avatar: null, type: "whatsapp" },
-    ];
+    // Hoisted static contactsData to CONTACTS_DATA in module scope
 
     const excludedCount = Object.values(excludedContacts).filter(Boolean).length;
     const includedCount = Object.values(includedContacts).filter(Boolean).length;
@@ -256,7 +259,7 @@ export default function UpdatesPage() {
 
           <main className="flex-grow overflow-y-auto pb-24">
             <div className="flex flex-col">
-              {contactsData.map((contact) => (
+              {CONTACTS_DATA.map((contact) => (
                 <div 
                   key={contact.id}
                   onClick={() => toggleContact(contact.id)}
@@ -265,7 +268,7 @@ export default function UpdatesPage() {
                   <div className="flex items-center gap-3.5 min-w-0">
                     {contact.avatar ? (
                       <div className="w-[40px] h-[40px] rounded-full overflow-hidden shrink-0 bg-zinc-200">
-                        <img className="w-full h-full object-cover" alt={contact.name} src={contact.avatar} />
+                        <img className="w-full h-full object-cover" alt={contact.name} src={contact.avatar} loading="lazy" decoding="async" />
                       </div>
                     ) : (
                       <div className="w-[40px] h-[40px] rounded-full shrink-0 bg-[#dfe5e7] dark:bg-zinc-800 flex items-center justify-center text-[#54656f] dark:text-zinc-400">
@@ -552,6 +555,8 @@ export default function UpdatesPage() {
                   className="w-full h-full object-cover"
                   alt={activeStatus.userName}
                   src={activeStatus.avatar}
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
               <div className="flex flex-col leading-tight">
@@ -575,6 +580,8 @@ export default function UpdatesPage() {
             className="max-h-[85vh] max-w-full object-contain rounded-sm"
             alt="Status media content"
             src={activeStatus.bgImage}
+            loading="lazy"
+            decoding="async"
           />
         </div>
 
@@ -1199,7 +1206,7 @@ export default function UpdatesPage() {
           <div className="pt-4">
             <h3 className="text-[14px] font-bold text-[#667781] dark:text-zinc-400 px-4 mb-2.5">Contacts on WhatsApp</h3>
             <div className="flex flex-col">
-              {contactsData.filter(c => c.type === "whatsapp").map((contact) => (
+              {CONTACTS_DATA.filter(c => c.type === "whatsapp").map((contact) => (
                 <div 
                   key={contact.id}
                   onClick={() => toggleContactSelect(contact.id)}
@@ -1208,7 +1215,7 @@ export default function UpdatesPage() {
                   <div className="flex items-center gap-3.5 min-w-0">
                     {contact.avatar ? (
                       <div className="w-[42px] h-[42px] rounded-full overflow-hidden shrink-0 bg-zinc-200">
-                        <img className="w-full h-full object-cover" alt={contact.name} src={contact.avatar} />
+                        <img className="w-full h-full object-cover" alt={contact.name} src={contact.avatar} loading="lazy" decoding="async" />
                       </div>
                     ) : (
                       <div className="w-[42px] h-[42px] rounded-full shrink-0 bg-[#dfe5e7] dark:bg-zinc-800 flex items-center justify-center text-[#54656f] dark:text-zinc-400">
@@ -1372,6 +1379,8 @@ export default function UpdatesPage() {
                     className="w-[58px] h-[58px] rounded-full object-cover border border-zinc-100"
                     alt="My status"
                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtSTDTUitRQB5aG-ZcdFAsyFdP86mWxvW55CsH3fDZwlfJQzUR8Xav3ghPt6k07h7ujn8WjMnfUwokeODYvQGKKOm7F33aNS0EEnqaoctdIhY8ELBRO8tQR6mKm8_M0WvqegMqhtKgIxXjkXMfUbV5OAZ2iz0uoTKeVH-5FFp1KbmYjoXhls-OIQUHDnNB91KgpZba0PQ5hk-LVeGan4gFJdAzjvJk3mHfnEHBA8mO8nDZBHLChXewILCZaO_GNayQUdKeTWP5oeQ"
+                    loading="lazy"
+                    decoding="async"
                   />
                   <div className="absolute -bottom-1 -right-1 bg-[#00a884] text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-white">
                     <span className="material-symbols-outlined text-[12px] font-bold">add</span>
@@ -1384,7 +1393,7 @@ export default function UpdatesPage() {
             </div>
 
             {/* Other Status Cards */}
-            {statusCards.map((card) => (
+            {STATUS_CARDS.map((card) => (
               <div
                 key={card.id}
                 onClick={() => setActiveStatus(card)}
@@ -1397,7 +1406,7 @@ export default function UpdatesPage() {
               >
                 {/* Overlay green ring avatar in top-left */}
                 <div className="absolute top-2 left-2.5 w-9 h-9 rounded-full border-2 border-[#00a884] flex items-center justify-center p-[1px] bg-white">
-                  <img className="w-full h-full rounded-full object-cover" alt={card.name} src={card.avatar} />
+                  <img className="w-full h-full rounded-full object-cover" alt={card.name} src={card.avatar} loading="lazy" decoding="async" />
                 </div>
 
                 {/* Status card name */}
@@ -1422,7 +1431,7 @@ export default function UpdatesPage() {
           </div>
 
           <div className="flex flex-col">
-            {[...userCreatedChannels, ...channelsList].map((chan) => (
+            {[...userCreatedChannels, ...CHANNELS_LIST].map((chan) => (
               <div
                 key={chan.id}
                 onClick={() => setActiveChannel(chan)}
@@ -1475,7 +1484,7 @@ export default function UpdatesPage() {
           </h3>
 
           <div className="flex flex-col">
-            {findChannels.map((item) => (
+            {FIND_CHANNELS.map((item) => (
               <div
                 key={item.id}
                 onClick={() => setActiveSuggestedChannel(item)}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Navigation from "@/components/Navigation";
+import { useTheme } from "@/hooks/useTheme";
 
 // SVG Illustration for the Intro Screen
 const CommunityIllustration = () => (
@@ -60,20 +60,7 @@ export default function CommunitiesPage() {
   // Step navigation: null = List, "intro" = Screen 1, "form" = Screen 2, "success" = Screen 3, "info" = Screen 4 (Info Page)
   const [step, setStep] = useState(null);
   const [showCommunityMenu, setShowCommunityMenu] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  useEffect(() => {
-    const theme = localStorage.getItem("theme");
-    const isDark = theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    setIsDarkMode(isDark);
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
-    } else {
-      document.documentElement.classList.add("light");
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
+  const { isDarkMode, toggleTheme } = useTheme();
 
   useEffect(() => {
     const shouldHide = step !== null;
@@ -82,20 +69,6 @@ export default function CommunitiesPage() {
       window.dispatchEvent(new CustomEvent("hide-bottom-nav", { detail: false }));
     };
   }, [step]);
-
-  const toggleTheme = () => {
-    const nextDark = !isDarkMode;
-    setIsDarkMode(nextDark);
-    if (nextDark) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.add("light");
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
   
   // Form State
   const [communityName, setCommunityName] = useState("");
@@ -134,24 +107,24 @@ export default function CommunitiesPage() {
     }
   }, [router]);
 
-  const handleStartFlow = () => {
+  const handleStartFlow = useCallback(() => {
     setStep("intro");
-  };
+  }, []);
 
-  const handleGetStarted = () => {
+  const handleGetStarted = useCallback(() => {
     setStep("form");
-  };
+  }, []);
 
-  const handleCreateCommunitySubmit = (e) => {
+  const handleCreateCommunitySubmit = useCallback((e) => {
     if (e) e.preventDefault();
     if (!communityName.trim()) return;
     
     // Add default group General
     setCurrentCommunityGroups(["General"]);
     setStep("success");
-  };
+  }, [communityName]);
 
-  const handleFinishFlow = () => {
+  const handleFinishFlow = useCallback(() => {
     // Save to userCommunities list before exiting
     const newComm = {
       id: "user-comm-" + Date.now(),
@@ -166,9 +139,9 @@ export default function CommunitiesPage() {
     setCommunityDesc("Hi everyone! This community is for members to chat in topic-based groups and get important announcements.");
     setShowCommunityMenu(false);
     setStep(null);
-  };
+  }, [communityName, communityDesc, currentCommunityGroups, userCommunities]);
 
-  const handleAddGroupSubmit = (e) => {
+  const handleAddGroupSubmit = useCallback((e) => {
     e.preventDefault();
     if (newGroupName.trim()) {
       const updated = [...currentCommunityGroups, newGroupName.trim()];
@@ -185,10 +158,10 @@ export default function CommunitiesPage() {
       setNewGroupName("");
       setShowAddGroupModal(false);
     }
-  };
+  }, [newGroupName, currentCommunityGroups, activeInfoComm]);
 
   // Edit community info submit
-  const handleEditInfoSubmit = (e) => {
+  const handleEditInfoSubmit = useCallback((e) => {
     e.preventDefault();
     if (editCommName.trim()) {
       const updatedComm = {
@@ -212,7 +185,7 @@ export default function CommunitiesPage() {
       
       setShowEditInfoModal(false);
     }
-  };
+  }, [editCommName, editCommDesc, activeInfoComm, userCommunities]);
 
   // ==========================================
   // VIEW 1: INTRO SCREEN (Create a new community)
@@ -1163,6 +1136,8 @@ export default function CommunitiesPage() {
                 className="w-full h-full object-cover"
                 alt="Zara Ali Community avatar"
                 src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&fit=crop&q=80"
+                loading="lazy"
+                decoding="async"
               />
             </div>
             <span className="text-[16.5px] font-bold text-[#1c2e35]">Zara Ali</span>

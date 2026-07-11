@@ -1,8 +1,223 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Navigation from "@/components/Navigation";
+
+const ACTIONS = [
+  { label: "Call", icon: "call" },
+  { label: "Schedule", icon: "calendar_today" },
+  { label: "Keypad", icon: "dialpad" },
+  { label: "Favorites", icon: "favorite" },
+];
+
+const CALLS_LIST = [
+  {
+    id: 1,
+    name: "+91 90590 55803 (3)",
+    subtitle: "~ Rayan | MOCARD",
+    time: "Yesterday, 17:30",
+    incoming: true,
+    missed: false,
+    avatarBg: "bg-zinc-900 text-white",
+    avatarText: "Rayan",
+  },
+  {
+    id: 2,
+    name: "+91 90590 55803",
+    subtitle: "~ Rayan | MOCARD",
+    time: "23 June, 19:37",
+    incoming: true,
+    missed: true,
+    avatarBg: "bg-zinc-900 text-white",
+    avatarText: "Rayan",
+  },
+  {
+    id: 3,
+    name: "Sheetal Ma'am Appzeto",
+    subtitle: "",
+    time: "23 June, 14:54",
+    incoming: true,
+    missed: false,
+    avatarBg: "bg-orange-100 text-orange-700",
+    avatarText: "S",
+  },
+  {
+    id: 4,
+    name: "MAMMA (2)",
+    subtitle: "",
+    time: "23 June, 07:44",
+    incoming: true,
+    missed: true,
+    avatarBg: "bg-blue-100 text-blue-700",
+    avatarText: "M",
+  },
+  {
+    id: 5,
+    name: "+91 90590 55803 (5)",
+    subtitle: "~ Rayan | MOCARD",
+    time: "22 June, 18:49",
+    incoming: false,
+    missed: false,
+    avatarBg: "bg-zinc-900 text-white",
+    avatarText: "Rayan",
+  },
+  {
+    id: 6,
+    name: "+91 90590 55803",
+    subtitle: "~ Rayan | MOCARD",
+    time: "22 June, 18:07",
+    incoming: true,
+    missed: true,
+    avatarBg: "bg-zinc-900 text-white",
+    avatarText: "Rayan",
+  },
+  {
+    id: 7,
+    name: "Ravi Appzeto",
+    subtitle: "~ Ravi Appzeto",
+    time: "22 June, 15:04",
+    incoming: false,
+    missed: false,
+    avatarBg: "bg-teal-50 text-teal-600 font-bold border border-teal-100",
+    avatarText: "Appzeto",
+  },
+  {
+    id: 8,
+    name: "Ravi Appzeto",
+    subtitle: "~ Ravi Appzeto",
+    time: "22 June, 15:04",
+    incoming: true,
+    missed: true,
+    avatarBg: "bg-teal-50 text-teal-600 font-bold border border-teal-100",
+    avatarText: "Appzeto",
+  },
+];
+
+const KEYPAD_BUTTONS = [
+  { num: "1", sub: "" },
+  { num: "2", sub: "A B C" },
+  { num: "3", sub: "D E F" },
+  { num: "4", sub: "G H I" },
+  { num: "5", sub: "J K L" },
+  { num: "6", sub: "M N O" },
+  { num: "7", sub: "P Q R S" },
+  { num: "8", sub: "T U V" },
+  { num: "9", sub: "W X Y Z" },
+  { num: "*", sub: "" },
+  { num: "0", sub: "+" },
+  { num: "#", sub: "" },
+];
+
+const FREQUENTLY_CONTACTED = [
+  {
+    id: "sheetal",
+    name: "Sheetal Ma'am Appzeto",
+    subtext: "😇",
+    avatarBg: "bg-orange-100 text-orange-700",
+    avatarText: "S",
+  },
+  {
+    id: "kittu",
+    name: "Kittu",
+    avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuD209t6Zin8k_HGjBSvGIRB_KONmSIL8sbz2S-MQFb6yxRje3Ge3PGp-yyOH_yZg4mCb_u8FkyApwL2yhfjFnLSiwHkH3lawFQHkpZmSRXx5D7BGsdZYSdvP6PhIeM3t9PjrvbV02NUdZMoHPGEZ-ZwJRlrv8enxQjqxirmtclZn9U_UQz7m55E9_VQNGreM6hRVv44INUgYZ7PQRf4Oct93w5plsG6f9LeRAuAOZt_QSgliP9AOs46NF7TylHhikGVRGfXyCWVFLo",
+  },
+  {
+    id: "shivam",
+    name: "Shivam Lovevanshi Tester Appzeto",
+    subtext: "Shivam..",
+    avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&fit=crop&q=80",
+  },
+  {
+    id: "shubham",
+    name: "shubham jamliya Appzeto",
+    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&fit=crop&q=80",
+  },
+  {
+    id: "furqan",
+    name: "Furqan Appzeto",
+    subtext: "Alhamdulillah🤍",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&fit=crop&q=80",
+  },
+];
+
+const FREQUENTLY_CONTACTED_FAVOURITES = [
+  {
+    id: "sheetal",
+    name: "Sheetal Ma'am Appzeto",
+    avatarBg: "bg-orange-100 text-orange-700",
+    avatarText: "S",
+  },
+  {
+    id: "ankit-team",
+    name: "Appzeto team Ankit ✨",
+    subtext: "Amit, Furqan Appzeto, Priyank Appzeto, Raunak...",
+    avatarBg: "bg-[#e6f5ef] text-[#0f8b5d]",
+    avatarIcon: "groups",
+  },
+  {
+    id: "driveon",
+    name: "Driveon ( Zoom Car , Shubham Gupta , Ah...",
+    subtext: "Ajay, chhan chhan, Hritik, Raj Sir Project Manage...",
+    avatarBg: "bg-[#e6f5ef] text-[#0f8b5d]",
+    avatarIcon: "groups",
+  },
+];
+
+const CONTACTS_ON_ZETTO = [
+  {
+    id: "c1",
+    name: "******8547",
+    avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=100&fit=crop&q=80",
+  },
+  {
+    id: "c2",
+    name: "+91 95105 91925",
+    avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&fit=crop&q=80",
+  },
+  {
+    id: "c3",
+    name: "+919510591925",
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop&q=80",
+  },
+  {
+    id: "c4",
+    name: "~Mahi Tanpure Sage",
+    avatarBg: "bg-purple-100 text-purple-700",
+    avatarIcon: "person",
+  },
+];
+
+const CONTACTS_ON_ZETTO_FAVOURITES = [
+  ...CONTACTS_ON_ZETTO,
+  {
+    id: "c5",
+    name: "1111",
+    avatarBg: "bg-emerald-100 text-emerald-700",
+    avatarIcon: "person",
+  },
+  {
+    id: "c6",
+    name: "Aakash Sage",
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&fit=crop&q=80",
+  },
+  {
+    id: "c7",
+    name: "Aashay",
+    avatarBg: "bg-blue-100 text-blue-700",
+    avatarText: "A",
+  },
+  {
+    id: "c8",
+    name: "Aashutosh Malviya Sage",
+    avatarBg: "bg-orange-100 text-orange-700",
+    avatarText: "AM",
+  },
+  {
+    id: "c9",
+    name: "Aayushi Sage",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&fit=crop&q=80",
+  },
+];
 
 export default function CallsPage() {
   const router = useRouter();
@@ -31,249 +246,33 @@ export default function CallsPage() {
   const [requireApproval, setRequireApproval] = useState(false);
   const [reminder, setReminder] = useState("15 minutes before");
 
-  const actions = [
-    { label: "Call", icon: "call", onClick: () => setShowSelectContact(true) },
-    { label: "Schedule", icon: "calendar_today", onClick: () => setShowSchedule(true) },
-    { label: "Keypad", icon: "dialpad", onClick: () => setShowDialer(true) },
-    { label: "Favorites", icon: "favorite", onClick: () => setShowAddFavourite(true) },
-  ];
+  const [calls, setCalls] = useState(() => CALLS_LIST);
 
-  const callsList = [
-    {
-      id: 1,
-      name: "+91 90590 55803 (3)",
-      subtitle: "~ Rayan | MOCARD",
-      time: "Yesterday, 17:30",
-      incoming: true,
-      missed: false,
-      avatarBg: "bg-zinc-900 text-white",
-      avatarText: "Rayan",
-    },
-    {
-      id: 2,
-      name: "+91 90590 55803",
-      subtitle: "~ Rayan | MOCARD",
-      time: "23 June, 19:37",
-      incoming: true,
-      missed: true,
-      avatarBg: "bg-zinc-900 text-white",
-      avatarText: "Rayan",
-    },
-    {
-      id: 3,
-      name: "Sheetal Ma'am Appzeto",
-      subtitle: "",
-      time: "23 June, 14:54",
-      incoming: true,
-      missed: false,
-      avatarBg: "bg-orange-100 text-orange-700",
-      avatarText: "S",
-    },
-    {
-      id: 4,
-      name: "MAMMA (2)",
-      subtitle: "",
-      time: "23 June, 07:44",
-      incoming: true,
-      missed: true,
-      avatarBg: "bg-blue-100 text-blue-700",
-      avatarText: "M",
-    },
-    {
-      id: 5,
-      name: "+91 90590 55803 (5)",
-      subtitle: "~ Rayan | MOCARD",
-      time: "22 June, 18:49",
-      incoming: false,
-      missed: false,
-      avatarBg: "bg-zinc-900 text-white",
-      avatarText: "Rayan",
-    },
-    {
-      id: 6,
-      name: "+91 90590 55803",
-      subtitle: "~ Rayan | MOCARD",
-      time: "22 June, 18:07",
-      incoming: true,
-      missed: true,
-      avatarBg: "bg-zinc-900 text-white",
-      avatarText: "Rayan",
-    },
-    {
-      id: 7,
-      name: "Ravi Appzeto",
-      subtitle: "~ Ravi Appzeto",
-      time: "22 June, 15:04",
-      incoming: false,
-      missed: false,
-      avatarBg: "bg-teal-50 text-teal-600 font-bold border border-teal-100",
-      avatarText: "Appzeto",
-    },
-    {
-      id: 8,
-      name: "Ravi Appzeto",
-      subtitle: "~ Ravi Appzeto",
-      time: "22 June, 15:04",
-      incoming: true,
-      missed: true,
-      avatarBg: "bg-teal-50 text-teal-600 font-bold border border-teal-100",
-      avatarText: "Appzeto",
-    },
-  ];
-
-  const [calls, setCalls] = useState(callsList);
-
-  const keypadButtons = [
-    { num: "1", sub: "" },
-    { num: "2", sub: "A B C" },
-    { num: "3", sub: "D E F" },
-    { num: "4", sub: "G H I" },
-    { num: "5", sub: "J K L" },
-    { num: "6", sub: "M N O" },
-    { num: "7", sub: "P Q R S" },
-    { num: "8", sub: "T U V" },
-    { num: "9", sub: "W X Y Z" },
-    { num: "*", sub: "" },
-    { num: "0", sub: "+" },
-    { num: "#", sub: "" },
-  ];
-
-  const frequentlyContacted = [
-    {
-      id: "sheetal",
-      name: "Sheetal Ma'am Appzeto",
-      subtext: "😇",
-      avatarBg: "bg-orange-100 text-orange-700",
-      avatarText: "S",
-    },
-    {
-      id: "kittu",
-      name: "Kittu",
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuD209t6Zin8k_HGjBSvGIRB_KONmSIL8sbz2S-MQFb6yxRje3Ge3PGp-yyOH_yZg4mCb_u8FkyApwL2yhfjFnLSiwHkH3lawFQHkpZmSRXx5D7BGsdZYSdvP6PhIeM3t9PjrvbV02NUdZMoHPGEZ-ZwJRlrv8enxQjqxirmtclZn9U_UQz7m55E9_VQNGreM6hRVv44INUgYZ7PQRf4Oct93w5plsG6f9LeRAuAOZt_QSgliP9AOs46NF7TylHhikGVRGfXyCWVFLo",
-    },
-    {
-      id: "shivam",
-      name: "Shivam Lovevanshi Tester Appzeto",
-      subtext: "Shivam..",
-      avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&fit=crop&q=80",
-    },
-    {
-      id: "shubham",
-      name: "shubham jamliya Appzeto",
-      avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&fit=crop&q=80",
-    },
-    {
-      id: "furqan",
-      name: "Furqan Appzeto",
-      subtext: "Alhamdulillah\uD83E\uDD0D",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&fit=crop&q=80",
-    },
-  ];
-
-  const frequentlyContactedFavourites = [
-    {
-      id: "sheetal",
-      name: "Sheetal Ma'am Appzeto",
-      avatarBg: "bg-orange-100 text-orange-700",
-      avatarText: "S",
-    },
-    {
-      id: "ankit-team",
-      name: "Appzeto team Ankit ✨",
-      subtext: "Amit, Furqan Appzeto, Priyank Appzeto, Raunak...",
-      avatarBg: "bg-[#e6f5ef] text-[#0f8b5d]",
-      avatarIcon: "groups",
-    },
-    {
-      id: "driveon",
-      name: "Driveon ( Zoom Car , Shubham Gupta , Ah...",
-      subtext: "Ajay, chhan chhan, Hritik, Raj Sir Project Manage...",
-      avatarBg: "bg-[#e6f5ef] text-[#0f8b5d]",
-      avatarIcon: "groups",
-    },
-  ];
-
-  const contactsOnZetto = [
-    {
-      id: "c1",
-      name: "******8547",
-      avatar: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=100&fit=crop&q=80",
-    },
-    {
-      id: "c2",
-      name: "+91 95105 91925",
-      avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&fit=crop&q=80",
-    },
-    {
-      id: "c3",
-      name: "+919510591925",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop&q=80",
-    },
-    {
-      id: "c4",
-      name: "~Mahi Tanpure Sage",
-      avatarBg: "bg-purple-100 text-purple-700",
-      avatarIcon: "person",
-    },
-  ];
-
-  const contactsOnZettoFavourites = [
-    ...contactsOnZetto,
-    {
-      id: "c5",
-      name: "1111",
-      avatarBg: "bg-emerald-100 text-emerald-700",
-      avatarIcon: "person",
-    },
-    {
-      id: "c6",
-      name: "Aakash Sage",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&fit=crop&q=80",
-    },
-    {
-      id: "c7",
-      name: "Aashay",
-      avatarBg: "bg-blue-100 text-blue-700",
-      avatarText: "A",
-    },
-    {
-      id: "c8",
-      name: "Aashutosh Malviya Sage",
-      avatarBg: "bg-orange-100 text-orange-700",
-      avatarText: "AM",
-    },
-    {
-      id: "c9",
-      name: "Aayushi Sage",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&fit=crop&q=80",
-    },
-  ];
-
-  const handleKeyPress = (num) => {
+  const handleKeyPress = useCallback((num) => {
     setDialedNumber((prev) => prev + num);
-  };
+  }, []);
 
-  const handleBackspace = () => {
+  const handleBackspace = useCallback(() => {
     setDialedNumber((prev) => prev.slice(0, -1));
-  };
+  }, []);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     setDialedNumber("");
-  };
+  }, []);
 
-  const toggleSelectContact = (id) => {
+  const toggleSelectContact = useCallback((id) => {
     setSelectedContacts((prev) => ({
       ...prev,
       [id]: !prev[id],
     }));
-  };
+  }, []);
 
-  const toggleSelectFavourite = (id) => {
+  const toggleSelectFavourite = useCallback((id) => {
     setSelectedFavourites((prev) => ({
       ...prev,
       [id]: !prev[id],
     }));
-  };
+  }, []);
 
   // 1. RENDER KEYPAD / DIALER SCREEN
   if (showDialer) {
@@ -312,7 +311,7 @@ export default function CallsPage() {
 
         <div className="w-full max-w-[340px] mx-auto px-4 pb-8 flex flex-col items-center">
           <div className="grid grid-cols-3 gap-y-4 gap-x-6 w-full justify-items-center mb-6">
-            {keypadButtons.map((btn) => (
+            {KEYPAD_BUTTONS.map((btn) => (
               <button
                 key={btn.num}
                 onClick={() => handleKeyPress(btn.num)}
@@ -558,7 +557,7 @@ export default function CallsPage() {
             Frequently contacted
           </div>
           <div className="flex flex-col">
-            {frequentlyContacted.map((c) => (
+            {FREQUENTLY_CONTACTED.map((c) => (
               <div
                 key={c.id}
                 onClick={() => toggleSelectContact(c.id)}
@@ -566,7 +565,7 @@ export default function CallsPage() {
               >
                 <div className="flex items-center gap-3.5 min-w-0">
                   {c.avatar ? (
-                    <img className="w-[44px] h-[44px] rounded-full object-cover border border-zinc-100 shrink-0" src={c.avatar} alt={c.name} />
+                    <img className="w-[44px] h-[44px] rounded-full object-cover border border-zinc-100 shrink-0" src={c.avatar} alt={c.name} loading="lazy" decoding="async" />
                   ) : (
                     <div className={`w-[44px] h-[44px] rounded-full flex items-center justify-center ${c.avatarBg} shrink-0 text-sm font-bold`}>
                       {c.avatarText}
@@ -598,7 +597,7 @@ export default function CallsPage() {
               >
                 <div className="flex items-center gap-3.5 min-w-0">
                   {c.avatar ? (
-                    <img className="w-[44px] h-[44px] rounded-full object-cover border border-zinc-100 shrink-0" src={c.avatar} alt={c.name} />
+                    <img className="w-[44px] h-[44px] rounded-full object-cover border border-zinc-100 shrink-0" src={c.avatar} alt={c.name} loading="lazy" decoding="async" />
                   ) : (
                     <div className={`w-[44px] h-[44px] rounded-full flex items-center justify-center ${c.avatarBg} shrink-0 text-[#54656f]`}>
                       <span className="material-symbols-outlined text-[20px] fill opacity-80">{c.avatarIcon}</span>
@@ -654,7 +653,7 @@ export default function CallsPage() {
             Frequently contacted
           </div>
           <div className="flex flex-col">
-            {frequentlyContactedFavourites.map((c) => (
+            {FREQUENTLY_CONTACTED_FAVOURITES.map((c) => (
               <div
                 key={c.id}
                 onClick={() => toggleSelectFavourite(c.id)}
@@ -662,7 +661,7 @@ export default function CallsPage() {
               >
                 <div className="flex items-center gap-3.5 min-w-0">
                   {c.avatar ? (
-                    <img className="w-[44px] h-[44px] rounded-full object-cover border border-zinc-100 shrink-0" src={c.avatar} alt={c.name} />
+                    <img className="w-[44px] h-[44px] rounded-full object-cover border border-zinc-100 shrink-0" src={c.avatar} alt={c.name} loading="lazy" decoding="async" />
                   ) : (
                     <div className={`w-[44px] h-[44px] rounded-full flex items-center justify-center ${c.avatarBg} shrink-0 text-sm font-bold`}>
                       {c.avatarIcon ? (
@@ -690,7 +689,7 @@ export default function CallsPage() {
             Contacts on Zetto
           </div>
           <div className="flex flex-col pb-20">
-            {contactsOnZettoFavourites.map((c) => (
+            {CONTACTS_ON_ZETTO_FAVOURITES.map((c) => (
               <div
                 key={c.id}
                 onClick={() => toggleSelectFavourite(c.id)}
@@ -698,7 +697,7 @@ export default function CallsPage() {
               >
                 <div className="flex items-center gap-3.5 min-w-0">
                   {c.avatar ? (
-                    <img className="w-[44px] h-[44px] rounded-full object-cover border border-zinc-100 shrink-0" src={c.avatar} alt={c.name} />
+                    <img className="w-[44px] h-[44px] rounded-full object-cover border border-zinc-100 shrink-0" src={c.avatar} alt={c.name} loading="lazy" decoding="async" />
                   ) : (
                     <div className={`w-[44px] h-[44px] rounded-full flex items-center justify-center ${c.avatarBg} shrink-0 text-sm font-bold text-[#54656f]`}>
                       {c.avatarIcon ? (
@@ -796,16 +795,23 @@ export default function CallsPage() {
       <main className="flex-grow w-full max-w-3xl mx-auto">
         {/* Quick Actions Row */}
         <section className="px-4 py-3.5 grid grid-cols-4 gap-2">
-          {actions.map((act) => (
-            <div key={act.label} onClick={act.onClick} className="flex flex-col items-center cursor-pointer group">
-              <div className="w-14 h-14 bg-[#f0f2f5] text-[#1c2e35] rounded-full flex items-center justify-center transition-all group-active:scale-95 hover:bg-zinc-200">
-                <span className="material-symbols-outlined text-[23px]">{act.icon}</span>
+          {ACTIONS.map((act, idx) => {
+            const onClickHandler = 
+              idx === 0 ? () => setShowSelectContact(true) :
+              idx === 1 ? () => setShowSchedule(true) :
+              idx === 2 ? () => setShowDialer(true) :
+              () => setShowAddFavourite(true);
+            return (
+              <div key={act.label} onClick={onClickHandler} className="flex flex-col items-center cursor-pointer group">
+                <div className="w-14 h-14 bg-[#f0f2f5] text-[#1c2e35] rounded-full flex items-center justify-center transition-all group-active:scale-95 hover:bg-zinc-200">
+                  <span className="material-symbols-outlined text-[23px]">{act.icon}</span>
+                </div>
+                <span className="text-[12.5px] font-semibold text-[#54656f] mt-2 text-center truncate w-full">
+                  {act.label}
+                </span>
               </div>
-              <span className="text-[12.5px] font-semibold text-[#54656f] mt-2 text-center truncate w-full">
-                {act.label}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </section>
 
         {/* Recent Section Heading */}

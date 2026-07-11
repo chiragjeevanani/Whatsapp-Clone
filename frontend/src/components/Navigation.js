@@ -1,21 +1,22 @@
 "use client";
 
+import React from "react";
 import { useRouter } from "next/navigation";
 import { motion, useTransform, useMotionValue } from "framer-motion";
 
-export default function Navigation({ activeTab, dragX, width, onTabChange }) {
+const NAVIGATION_TABS = [
+  { id: "chats", label: "Chats", icon: "chat", path: "/chats", badge: "99+" },
+  { id: "updates", label: "Updates", icon: "donut_large", path: "/updates", hasDot: true },
+  { id: "communities", label: "Communities", icon: "groups", path: "/communities" },
+  { id: "calls", label: "Calls", icon: "call", path: "/calls" },
+];
+
+function Navigation({ activeTab, dragX, width, onTabChange }) {
   const router = useRouter();
   const fallbackDragX = useMotionValue(0);
   const resolvedDragX = dragX || fallbackDragX;
 
-  const tabs = [
-    { id: "chats", label: "Chats", icon: "chat", path: "/chats", badge: "99+" },
-    { id: "updates", label: "Updates", icon: "donut_large", path: "/updates", hasDot: true },
-    { id: "communities", label: "Communities", icon: "groups", path: "/communities" },
-    { id: "calls", label: "Calls", icon: "call", path: "/calls" },
-  ];
-
-  const activeIndex = tabs.findIndex((t) => t.id === activeTab);
+  const activeIndex = NAVIGATION_TABS.findIndex((t) => t.id === activeTab);
 
   // Transform page drag offset to active tab index fractionally
   const fractionalIndex = useTransform(resolvedDragX, (val) => {
@@ -51,7 +52,7 @@ export default function Navigation({ activeTab, dragX, width, onTabChange }) {
           />
         )}
 
-        {tabs.map((tab, idx) => {
+        {NAVIGATION_TABS.map((tab, idx) => {
           const isActive = activeTab === tab.id;
           return (
             <button
@@ -111,3 +112,5 @@ export default function Navigation({ activeTab, dragX, width, onTabChange }) {
     </nav>
   );
 }
+
+export default React.memo(Navigation);
