@@ -200,16 +200,6 @@ export default function LoginPage() {
                 required
                 autoFocus
               />
-              {phone && (
-                <button
-                  type="button"
-                  onClick={() => setPhone("")}
-                  className="p-1 rounded-full hover:bg-zinc-200/50 transition-colors"
-                  aria-label="Clear phone number"
-                >
-                  <span className="material-symbols-outlined text-zinc-500 text-[18px]">close</span>
-                </button>
-              )}
             </div>
           </div>
 
