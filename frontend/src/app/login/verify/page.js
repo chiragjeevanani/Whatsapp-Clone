@@ -17,6 +17,23 @@ export default function VerifyPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // Force light theme on verify screen
+    const html = document.documentElement;
+    const isDark = html.classList.contains("dark");
+    if (isDark) {
+      html.classList.remove("dark");
+    }
+    return () => {
+      // Re-enable dark theme if it was set in localStorage or by system preference
+      const storedTheme = localStorage.getItem("theme");
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (storedTheme === "dark" || (!storedTheme && prefersDark)) {
+        html.classList.add("dark");
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     // Redirect if already logged in
     const token = localStorage.getItem("token");
     if (token) {
