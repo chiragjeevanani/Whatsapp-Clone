@@ -31,7 +31,7 @@ app.use((req, res, next) => {
 });
 
 // 3. Security & Utility Middlewares
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors({
   origin: "*", // Adjust for production environments
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -84,6 +84,30 @@ app.use(
     changeOrigin: true,
     pathRewrite: {
       "^/": "/api/v1/users/"
+    },
+    on: { proxyReq },
+  })
+);
+
+app.use(
+  "/api/v1/profile",
+  createProxyMiddleware({
+    target: config.services.user,
+    changeOrigin: true,
+    pathRewrite: {
+      "^/": "/api/v1/profile/"
+    },
+    on: { proxyReq },
+  })
+);
+
+app.use(
+  "/uploads",
+  createProxyMiddleware({
+    target: config.services.user,
+    changeOrigin: true,
+    pathRewrite: {
+      "^/": "/uploads/"
     },
     on: { proxyReq },
   })

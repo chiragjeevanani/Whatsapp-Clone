@@ -6,8 +6,9 @@ class ApiClient {
     const url = `${API_BASE_URL}${endpoint}`;
     
     // Inject headers
+    const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
     const headers = {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...options.headers,
     };
 
@@ -47,11 +48,21 @@ class ApiClient {
   }
 
   post(endpoint, body, options = {}) {
-    return this.request(endpoint, { ...options, method: "POST", body: JSON.stringify(body) });
+    const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+    return this.request(endpoint, { 
+      ...options, 
+      method: "POST", 
+      body: isFormData ? body : JSON.stringify(body) 
+    });
   }
 
   put(endpoint, body, options = {}) {
-    return this.request(endpoint, { ...options, method: "PUT", body: JSON.stringify(body) });
+    const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+    return this.request(endpoint, { 
+      ...options, 
+      method: "PUT", 
+      body: isFormData ? body : JSON.stringify(body) 
+    });
   }
 
   delete(endpoint, options = {}) {

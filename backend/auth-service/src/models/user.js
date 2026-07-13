@@ -17,6 +17,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    email: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     about: {
       type: String,
       default: "Available for chat...",

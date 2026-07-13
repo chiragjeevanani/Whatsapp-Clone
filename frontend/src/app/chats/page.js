@@ -281,6 +281,7 @@ export default function ChatsPage() {
   const { isDarkMode, toggleTheme } = useTheme();
 
   const [chats, setChats] = useState(() => INITIAL_CHATS);
+  const [hasProcessedScan, setHasProcessedScan] = useState(false);
 
   useEffect(() => {
     // Redirect to login if not authenticated
@@ -289,6 +290,37 @@ export default function ChatsPage() {
       router.push("/login");
     }
   }, [router]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || hasProcessedScan) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const scanPhone = urlParams.get("scanPhone");
+    if (scanPhone) {
+      setHasProcessedScan(true);
+      const formattedPhone = decodeURIComponent(scanPhone).trim();
+      // Check if chat already exists
+      const existing = chats.find(c => c.name.includes(formattedPhone) || c.id === formattedPhone);
+      if (existing) {
+        router.push(`/chats/${existing.id}`);
+      } else {
+        // Create new dynamic chat and redirect
+        const newId = `chat_${Date.now()}`;
+        const newChat = {
+          id: newId,
+          name: formattedPhone,
+          avatar: null,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+          message: "Scan code successful! Say Hello 👋",
+          unread: 0,
+          isGroup: false,
+          isPinned: false,
+          doubleCheck: false,
+        };
+        setChats(prev => [newChat, ...prev]);
+        router.push(`/chats/${newId}`);
+      }
+    }
+  }, [router, chats, hasProcessedScan]);
 
   useEffect(() => {
     const shouldHide = !!(showLockedChatsList || showArchivedChatsList);
@@ -401,9 +433,9 @@ export default function ChatsPage() {
             <span className="text-[15.5px] font-bold text-[#1c2e35]">New community</span>
           </div>
 
-          {/* Section: Contacts on Zetto */}
+          {/* Section: Contacts on AppMetaChat */}
           <div className="text-[13.5px] font-bold text-[#667781] pt-4 pb-2">
-            Contacts on Zetto
+            Contacts on AppMetaChat
           </div>
           <div className="flex flex-col pb-10">
             {CONTACTS_LIST.map((c) => (
@@ -416,19 +448,18 @@ export default function ChatsPage() {
                 className="flex items-center gap-3.5 py-3 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
               >
                 {c.avatar ? (
-                  <img className="w-[44px] h-[44px] rounded-full object-cover border border-zinc-100 shrink-0" src={c.avatar} alt={c.name} loading="lazy" decoding="async" />
+                  <div className="w-[48px] h-[48px] rounded-full overflow-hidden shrink-0">
+                    <img className="w-full h-full object-cover" alt={c.name} src={c.avatar} loading="lazy" decoding="async" />
+                  </div>
                 ) : (
-                  <div className={`w-[44px] h-[44px] rounded-full flex items-center justify-center ${c.avatarBg} shrink-0 text-sm font-bold`}>
-                    {c.avatarIcon ? (
-                      <span className="material-symbols-outlined text-[20px] fill opacity-80">{c.avatarIcon}</span>
-                    ) : (
-                      <span className="text-blue-700">{c.avatarText}</span>
-                    )}
+                  <div className={`w-[48px] h-[48px] rounded-full flex items-center justify-center shrink-0 text-[15.5px] font-bold ${c.avatarBg || "bg-teal-50 text-teal-600 border border-teal-100"}`}>
+                    {c.avatarText || c.name.charAt(0)}
                   </div>
                 )}
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[15.5px] font-bold text-[#1c2e35] truncate">{c.name}</span>
-                  {c.subtext && <span className="text-[13px] text-[#667781] truncate mt-0.5">{c.subtext}</span>}
+
+                <div className="flex-grow min-w-0 border-b border-zinc-100 pb-3 flex flex-col justify-center">
+                  <span className="text-[15.5px] font-bold text-[#1c2e35] truncate leading-snug">{c.name}</span>
+                  {c.subtext && <span className="text-[12.5px] text-[#667781] truncate mt-0.5">{c.subtext}</span>}
                 </div>
               </div>
             ))}
@@ -442,19 +473,20 @@ export default function ChatsPage() {
   return (
     <div className="w-full bg-white text-[#1c2e35] antialiased min-h-screen flex flex-col pb-24 font-sans select-none">
       {/* Top Header */}
-      <header className="sticky top-0 bg-white z-40 px-4 py-3 flex justify-between items-center">
-        <h1 className="text-[23px] font-bold text-[#008069] tracking-wide font-sans">Zetto</h1>
+      <header className="sticky top-0 bg-white z-40 px-4 pt-3 pb-2 flex justify-between items-center">
+        <div className="h-[38px] overflow-hidden flex items-center select-none cursor-pointer">
+          <img
+            src={isDarkMode ? "/darklogo.png" : "/image.png"}
+            alt="AppMetaChat"
+            className={`w-auto max-w-none object-contain ${
+              isDarkMode ? "h-[200px] -translate-x-[5px] translate-y-[5px]" : "h-[190px] translate-y-[6px]"
+            }`}
+          />
+        </div>
         <div className="flex items-center gap-5 text-[#3b4a54]">
-          <button aria-label="Payments" className="p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95">
-            <span className="material-symbols-outlined text-[24px]">currency_rupee</span>
-          </button>
-          <button aria-label="Camera" className="p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95">
-            <span className="material-symbols-outlined text-[24px]">photo_camera</span>
-          </button>
-          
-          <button 
+          <button
             onClick={toggleTheme}
-            aria-label="Toggle Theme" 
+            aria-label="Toggle Theme"
             className="p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95 cursor-pointer text-[#3b4a54] dark:text-white"
           >
             <span className="material-symbols-outlined text-[24px]">
@@ -463,22 +495,22 @@ export default function ChatsPage() {
           </button>
 
           <div className="relative">
-            <button 
+            <button
               onClick={() => setShowMoreMenu(!showMoreMenu)}
-              aria-label="More options" 
+              aria-label="More options"
               className={`p-1 hover:bg-zinc-100 rounded-full transition-colors active:scale-95 cursor-pointer ${showMoreMenu ? "bg-zinc-100" : ""}`}
             >
               <span className="material-symbols-outlined text-[24px]">more_vert</span>
             </button>
-            
+
             {showMoreMenu && (
               <>
-                <div 
-                  className="fixed inset-0 z-40 bg-transparent" 
+                <div
+                  className="fixed inset-0 z-40 bg-transparent"
                   onClick={() => setShowMoreMenu(false)}
                 />
                 <div className="absolute right-0 top-9 w-[205px] bg-white rounded-[16px] shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 z-50 text-[#111b21] animate-in fade-in zoom-in-95 duration-100 origin-top-right border border-zinc-100">
-                  <button 
+                  <button
                     onClick={() => {
                       setShowMoreMenu(false);
                       setShowSelectContact(true);
@@ -487,7 +519,7 @@ export default function ChatsPage() {
                   >
                     New group
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       setShowMoreMenu(false);
                       router.push("/communities?action=new");
@@ -496,19 +528,19 @@ export default function ChatsPage() {
                   >
                     New community
                   </button>
-                  <button 
+                  <button
                     onClick={() => setShowMoreMenu(false)}
                     className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer"
                   >
                     Broadcast lists
                   </button>
-                  <button 
+                  <button
                     onClick={() => setShowMoreMenu(false)}
                     className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer"
                   >
                     Linked devices
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       setShowMoreMenu(false);
                       setActiveFilter("favourites");
@@ -517,13 +549,13 @@ export default function ChatsPage() {
                   >
                     Starred
                   </button>
-                  <button 
+                  <button
                     onClick={() => setShowMoreMenu(false)}
                     className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer"
                   >
                     Payments
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       setShowMoreMenu(false);
                       setChats(prev => prev.map(c => ({ ...c, unread: 0 })));
@@ -532,7 +564,7 @@ export default function ChatsPage() {
                   >
                     Read all
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       setShowMoreMenu(false);
                       router.push("/settings");
@@ -550,7 +582,7 @@ export default function ChatsPage() {
       </header>
 
       {/* Search / Meta AI Bar */}
-      <div className="px-4 py-1.5">
+      <div className="px-4 pt-0.5 pb-1.5">
         <div className="w-full bg-[#f0f2f5] rounded-full flex items-center px-4 py-2.5 gap-3 shadow-none border border-transparent focus-within:border-zinc-200">
           <span className="material-symbols-outlined text-[#667781] text-[20px]">search</span>
           <span className="text-[#667781] text-[14.5px] font-normal">Ask Meta AI or Search</span>
@@ -559,35 +591,31 @@ export default function ChatsPage() {
 
       {/* Filter Chips */}
       <div className="px-4 py-2 flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth">
-        <button 
+        <button
           onClick={() => setActiveFilter("all")}
-          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer ${
-            activeFilter === "all" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
-          }`}
+          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer ${activeFilter === "all" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
+            }`}
         >
           All
         </button>
-        <button 
+        <button
           onClick={() => setActiveFilter("unread")}
-          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer flex items-center gap-1 ${
-            activeFilter === "unread" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
-          }`}
+          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer flex items-center gap-1 ${activeFilter === "unread" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
+            }`}
         >
           Unread <span className="text-xs bg-[#e1e3e6] px-1 rounded-full text-zinc-600">99+</span>
         </button>
-        <button 
+        <button
           onClick={() => setActiveFilter("favourites")}
-          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer ${
-            activeFilter === "favourites" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
-          }`}
+          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer ${activeFilter === "favourites" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
+            }`}
         >
           Favourites
         </button>
-        <button 
+        <button
           onClick={() => setActiveFilter("groups")}
-          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer flex items-center gap-1 ${
-            activeFilter === "groups" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
-          }`}
+          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer flex items-center gap-1 ${activeFilter === "groups" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
+            }`}
         >
           Groups <span className="text-xs bg-[#e1e3e6] px-1 rounded-full text-zinc-600">95</span>
         </button>
@@ -597,7 +625,7 @@ export default function ChatsPage() {
       </div>
 
       {/* Locked Chats Row */}
-      <div 
+      <div
         onClick={() => {
           setPinValue("");
           setIsPinError(false);
@@ -612,7 +640,7 @@ export default function ChatsPage() {
       </div>
 
       {/* Archived Row */}
-      <div 
+      <div
         onClick={() => setShowArchivedChatsList(true)}
         className="px-5 py-3.5 flex items-center justify-between hover:bg-zinc-50 transition-colors cursor-pointer active:bg-zinc-100"
       >
@@ -635,7 +663,7 @@ export default function ChatsPage() {
               className="flex items-center px-4 py-3 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
             >
               {/* Avatar Column */}
-              <div 
+              <div
                 className="relative shrink-0 mr-3.5 cursor-pointer hover:scale-105 active:scale-95 transition-transform duration-100"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -725,14 +753,14 @@ export default function ChatsPage() {
       {/* Quick Profile Modal */}
       <AnimatePresence>
         {quickProfileChat && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
             onClick={() => setQuickProfileChat(null)}
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.85, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.85, opacity: 0 }}
@@ -750,9 +778,9 @@ export default function ChatsPage() {
               {/* Avatar / Image Box */}
               <div className="w-[250px] h-[250px] bg-zinc-100 flex items-center justify-center overflow-hidden relative">
                 {quickProfileChat.avatar ? (
-                  <img 
-                    src={quickProfileChat.avatar} 
-                    alt={quickProfileChat.name} 
+                  <img
+                    src={quickProfileChat.avatar}
+                    alt={quickProfileChat.name}
                     className="w-full h-full object-cover"
                     loading="lazy"
                     decoding="async"
@@ -774,7 +802,7 @@ export default function ChatsPage() {
 
               {/* Bottom Actions Bar */}
               <div className="flex justify-around items-center h-12 bg-white border-t border-zinc-100 py-1">
-                <button 
+                <button
                   onClick={() => {
                     setQuickProfileChat(null);
                     router.push(`/chats/${quickProfileChat.id}`);
@@ -784,7 +812,7 @@ export default function ChatsPage() {
                 >
                   <span className="material-symbols-outlined text-[22px]">chat</span>
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setQuickProfileChat(null);
                     router.push(`/calls`);
@@ -794,7 +822,7 @@ export default function ChatsPage() {
                 >
                   <span className="material-symbols-outlined text-[22px]">call</span>
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setQuickProfileChat(null);
                     router.push(`/calls`);
@@ -804,7 +832,7 @@ export default function ChatsPage() {
                 >
                   <span className="material-symbols-outlined text-[22px]">videocam</span>
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setQuickProfileChat(null);
                     router.push(`/chats/${quickProfileChat.id}/profile`);
@@ -826,12 +854,12 @@ export default function ChatsPage() {
           <div className="w-full max-w-[340px] bg-white rounded-[24px] overflow-hidden text-[#111b21] shadow-2xl flex flex-col font-sans select-none animate-in fade-in zoom-in-95 duration-150 p-6">
             <h3 className="text-[18px] font-bold text-[#111b21]">Locked Chats</h3>
             <p className="text-[13.5px] text-[#667781] mt-2 mb-4 leading-relaxed">
-              Enter your passcode to view locked chats. <br/>
+              Enter your passcode to view locked chats. <br />
               <span className="text-zinc-400 text-[12px] font-medium">(Hint PIN: 1234)</span>
             </p>
-            
+
             <form onSubmit={handlePinSubmit} className="flex flex-col gap-4">
-              <input 
+              <input
                 type="password"
                 maxLength={4}
                 pattern="[0-9]*"
@@ -845,22 +873,22 @@ export default function ChatsPage() {
                 className="w-full bg-[#f0f2f5] border-none focus:outline-none rounded-xl py-3 px-4 text-center text-[22px] tracking-[8px] font-bold text-[#111b21]"
                 autoFocus
               />
-              
+
               {isPinError && (
                 <span className="text-[12.5px] text-rose-500 font-semibold text-center">
                   Incorrect PIN. Please try again.
                 </span>
               )}
-              
+
               <div className="flex justify-end gap-3 mt-2">
-                <button 
+                <button
                   type="button"
                   onClick={() => setShowPinModal(false)}
                   className="text-zinc-600 hover:text-zinc-800 font-bold text-[14px] px-3 py-2 cursor-pointer active:scale-95 transition-transform"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="text-[#00a884] hover:text-[#008f70] font-bold text-[14px] px-3 py-2 cursor-pointer active:scale-95 transition-transform"
                 >
@@ -877,7 +905,7 @@ export default function ChatsPage() {
         <div className="absolute inset-0 z-[150] bg-white flex flex-col font-sans select-none animate-in slide-in-from-right duration-250">
           {/* Header */}
           <header className="px-4 py-3 flex items-center bg-white border-b border-zinc-100 shrink-0">
-            <button 
+            <button
               onClick={() => setShowLockedChatsList(false)}
               className="p-1.5 hover:bg-zinc-100 rounded-full active:scale-95 transition-transform text-[#1c2e35]"
             >
@@ -952,7 +980,7 @@ export default function ChatsPage() {
         <div className="absolute inset-0 z-[150] bg-white flex flex-col font-sans select-none animate-in slide-in-from-right duration-250">
           {/* Header */}
           <header className="px-4 py-3 flex items-center bg-white border-b border-zinc-100 shrink-0">
-            <button 
+            <button
               onClick={() => setShowArchivedChatsList(false)}
               className="p-1.5 hover:bg-zinc-100 rounded-full active:scale-95 transition-transform text-[#1c2e35] cursor-pointer"
             >
