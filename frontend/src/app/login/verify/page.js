@@ -142,9 +142,9 @@ export default function VerifyPage() {
             onClick={handleBack}
             type="button"
             aria-label="Go back"
-            className="absolute top-4 left-4 p-2 rounded-full hover:bg-on-surface/5 transition-all hover:cursor-pointer active:scale-95 z-10"
+            className="absolute top-4 left-4 p-2 rounded-full hover:bg-zinc-200/50 transition-all hover:cursor-pointer active:scale-95 z-10"
           >
-            <span className="material-symbols-outlined text-on-surface-variant text-[20px]">arrow_back</span>
+            <span className="material-symbols-outlined text-zinc-500 text-[20px]">arrow_back</span>
           </button>
           {/* Logo */}
           <div className="mb-1">
@@ -160,10 +160,10 @@ export default function VerifyPage() {
 
           {/* Title + Subtitle */}
           <div className="text-center">
-            <h1 className="text-[20px] font-semibold text-on-surface tracking-tight mb-1">
+            <h1 className="text-[20px] font-semibold text-zinc-800 tracking-tight mb-1">
               Enter code
             </h1>
-            <p className="text-[13.5px] text-on-surface-variant max-w-[280px] leading-relaxed">
+            <p className="text-[13.5px] text-zinc-500 max-w-[280px] leading-relaxed">
               We&apos;ve sent a 6-digit code to your phone number.
             </p>
           </div>
@@ -181,7 +181,7 @@ export default function VerifyPage() {
                 value={val}
                 onChange={(e) => handleInputChange(idx, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(idx, e)}
-                className="w-11 h-14 text-center font-bold text-[20px] rounded-xl border border-outline-variant/60 bg-white/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                className="w-11 h-14 text-center font-bold text-[20px] rounded-xl border border-zinc-200 bg-white/50 focus:border-[#006d2f] focus:ring-2 focus:ring-[#006d2f]/20 outline-none transition-all text-zinc-800"
                 autoFocus={idx === 0}
               />
             ))}
@@ -189,7 +189,7 @@ export default function VerifyPage() {
 
           {/* Error Message */}
           {error && (
-            <p className="text-[12.5px] text-error font-medium text-center w-full px-2">
+            <p className="text-[12.5px] text-red-500 font-medium text-center w-full px-2">
               {error}
             </p>
           )}
@@ -202,10 +202,10 @@ export default function VerifyPage() {
               disabled={code.join("").length < 6 || loading || verified}
               className={`w-full h-[50px] rounded-xl font-semibold text-[15px] flex items-center justify-center gap-2 transition-all duration-300 hover:cursor-pointer active:scale-[0.98] ${
                 code.join("").length === 6 && !loading && !verified
-                  ? "bg-primary text-on-primary shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-105"
+                  ? "bg-[#006d2f] text-white shadow-md shadow-emerald-700/20 hover:shadow-lg hover:shadow-emerald-700/30 hover:brightness-105"
                   : verified
-                  ? "bg-secondary text-on-secondary shadow-md"
-                  : "bg-surface-container-high text-on-surface-variant/40 cursor-not-allowed"
+                  ? "bg-[#006b5f] text-white shadow-md"
+                  : "bg-zinc-100 text-zinc-400 cursor-not-allowed"
               }`}
             >
               <span>{loading ? "Verifying..." : verified ? "Verified" : "Verify"}</span>
@@ -217,7 +217,7 @@ export default function VerifyPage() {
             </button>
 
             {/* Timer / Resend Action */}
-            <div className="flex items-center gap-1 text-[13px] text-on-surface-variant mt-1">
+            <div className="flex items-center gap-1 text-[13px] text-zinc-500 mt-1">
               {timeLeft > 0 ? (
                 <span>
                   Resend in <span className="font-semibold text-[#006d2f]">0:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span>

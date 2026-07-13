@@ -138,14 +138,14 @@ export default function LoginPage() {
           </div>
 
           {/* Title + Subtitle */}
-          <h1 className="text-[20px] font-semibold text-on-surface tracking-tight">
+          <h1 className="text-[20px] font-semibold text-zinc-800 tracking-tight">
             Enter your phone number
           </h1>
-          <p className="text-[13.5px] text-on-surface-variant text-center leading-relaxed max-w-[280px] -mt-3 mb-1">
+          <p className="text-[13.5px] text-zinc-500 text-center leading-relaxed max-w-[280px] -mt-3 mb-1">
             We will send you an SMS to verify your number.
           </p>
           {/* Country Selector (Static Display, Premium Feel) */}
-          <div className="flex items-center gap-3 py-3 px-4 rounded-xl bg-surface-container/30 border border-outline-variant/20 w-full select-none">
+          <div className="flex items-center gap-3 py-3 px-4 rounded-xl bg-zinc-100/60 border border-zinc-200 w-full select-none">
             <Image
               src="https://flagcdn.com/w40/in.png"
               alt="India flag"
@@ -154,20 +154,20 @@ export default function LoginPage() {
               className="rounded-[2px] shrink-0 shadow-sm"
               unoptimized
             />
-            <span className="text-on-surface text-[14.5px] font-medium flex-1 text-left">India</span>
+            <span className="text-zinc-800 text-[14.5px] font-medium flex-1 text-left">India</span>
           </div>
 
           {/* Split Phone Input Fields */}
           <div className="flex gap-2.5 w-full">
             {/* Country Code Block */}
-            <div className="w-[72px] h-[52px] rounded-xl border border-outline-variant/30 bg-surface-container/20 flex items-center justify-center font-semibold text-on-surface text-[15px] select-none shrink-0">
+            <div className="w-[72px] h-[52px] rounded-xl border border-zinc-200 bg-zinc-50 flex items-center justify-center font-semibold text-zinc-700 text-[15px] select-none shrink-0">
               {INDIA_COUNTRY.code}
             </div>
 
             {/* Phone Number Field */}
             <div
               className={`flex-1 min-w-0 h-[52px] flex items-center gap-2 rounded-xl border-2 transition-all duration-200 px-3.5 bg-white/50 ${
-                isFocused ? "border-primary shadow-[0_0_0_3px_rgba(37,211,102,0.12)]" : "border-outline-variant/30 hover:border-outline-variant/50"
+                isFocused ? "border-[#006d2f] shadow-[0_0_0_3px_rgba(0,109,47,0.12)]" : "border-zinc-200 hover:border-zinc-300"
               }`}
             >
               <input
@@ -179,7 +179,7 @@ export default function LoginPage() {
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 placeholder="Phone number"
-                className="flex-1 min-w-0 bg-transparent py-3 text-on-surface text-[15px] outline-none placeholder:text-on-surface-variant/40 caret-primary"
+                className="flex-1 min-w-0 bg-transparent py-3 text-zinc-800 text-[15px] outline-none placeholder:text-zinc-400 caret-[#006d2f]"
                 required
                 autoFocus
               />
@@ -187,10 +187,10 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setPhone("")}
-                  className="p-1 rounded-full hover:bg-on-surface/5 transition-colors"
+                  className="p-1 rounded-full hover:bg-zinc-200/50 transition-colors"
                   aria-label="Clear phone number"
                 >
-                  <span className="material-symbols-outlined text-on-surface-variant text-[18px]">close</span>
+                  <span className="material-symbols-outlined text-zinc-500 text-[18px]">close</span>
                 </button>
               )}
             </div>
@@ -198,13 +198,13 @@ export default function LoginPage() {
 
           {/* Error Message */}
           {error && (
-            <p className="text-[12.5px] text-error font-medium text-center w-full px-2">
+            <p className="text-[12.5px] text-red-500 font-medium text-center w-full px-2">
               {error}
             </p>
           )}
 
           {/* Terms */}
-          <p className="text-[11.5px] text-on-surface-variant text-center leading-relaxed">
+          <p className="text-[11.5px] text-zinc-500 text-center leading-relaxed">
             By continuing, you agree to our{" "}
             <Link href="#" className="text-[#006d2f] font-medium hover:underline">
               Terms of Service
@@ -221,8 +221,8 @@ export default function LoginPage() {
             disabled={!isPhoneValid || loading}
             className={`w-full h-[50px] rounded-xl font-semibold text-[15px] flex items-center justify-center gap-2 transition-all duration-300 hover:cursor-pointer active:scale-[0.98] ${
               isPhoneValid && !loading
-                ? "bg-primary text-on-primary shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-105"
-                : "bg-surface-container-high text-on-surface-variant/40 cursor-not-allowed"
+                ? "bg-[#006d2f] text-white shadow-md shadow-emerald-700/20 hover:shadow-lg hover:shadow-emerald-700/30 hover:brightness-105"
+                : "bg-zinc-100 text-zinc-400 cursor-not-allowed"
             }`}
           >
             {loading ? "Sending..." : "Next"}
