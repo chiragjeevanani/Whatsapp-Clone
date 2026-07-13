@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -14,6 +14,14 @@ export default function LoginPage() {
   const [isFocused, setIsFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    // Redirect if already logged in
+    const token = localStorage.getItem("token");
+    if (token) {
+      router.push("/chats");
+    }
+  }, [router]);
 
   const getMinMaxPhoneLength = (countryCode) => {
     if (countryCode === "+1") return { min: 10, max: 10 };

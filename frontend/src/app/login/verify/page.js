@@ -4,15 +4,25 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { verifyOtp } from "../../../services/auth/verify";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function VerifyPage() {
   const router = useRouter();
+  const { loginUser } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [timeLeft, setTimeLeft] = useState(59);
   const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    // Redirect if already logged in
+    const token = localStorage.getItem("token");
+    if (token) {
+      router.push("/chats");
+    }
+  }, [router]);
 
   const inputRefs = [
     useRef(null),
@@ -78,10 +88,11 @@ export default function VerifyPage() {
       try {
         const response = await verifyOtp(phoneNumber, fullCode);
         
-        // Save tokens to localStorage
-        if (response?.data?.tokens?.accessToken) {
-          localStorage.setItem("token", response.data.tokens.accessToken);
+        // Save session through AuthContext
+        if (response?.data?.tokens?.accessToken && response?.data?.user) {
+          loginUser(response.data.user, response.data.tokens.accessToken);
         }
+        
         if (response?.data?.tokens?.refreshToken) {
           localStorage.setItem("refreshToken", response.data.tokens.refreshToken);
         }

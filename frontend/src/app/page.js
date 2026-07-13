@@ -2,10 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 export default function WelcomePage() {
   const router = useRouter();
+
+  useEffect(() => {
+    // Redirect if already logged in
+    const token = localStorage.getItem("token");
+    if (token) {
+      router.push("/chats");
+    }
+  }, [router]);
 
   const handleAgree = useCallback(() => {
     router.push("/login");

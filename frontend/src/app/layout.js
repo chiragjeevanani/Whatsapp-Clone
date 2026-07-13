@@ -26,6 +26,7 @@ export const metadata = {
 };
 
 import SwipeNavigation from "@/components/layout/SwipeNavigation";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 export default function RootLayout({ children }) {
   return (
@@ -54,9 +55,11 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-on-background" suppressHydrationWarning>
-        <SwipeNavigation>
-          {children}
-        </SwipeNavigation>
+        <AuthProvider>
+          <SwipeNavigation>
+            {children}
+          </SwipeNavigation>
+        </AuthProvider>
       </body>
     </html>
   );

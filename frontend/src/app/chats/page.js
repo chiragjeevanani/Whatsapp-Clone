@@ -283,6 +283,14 @@ export default function ChatsPage() {
   const [chats, setChats] = useState(() => INITIAL_CHATS);
 
   useEffect(() => {
+    // Redirect to login if not authenticated
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) {
+      router.push("/login");
+    }
+  }, [router]);
+
+  useEffect(() => {
     const shouldHide = !!(showLockedChatsList || showArchivedChatsList);
     window.dispatchEvent(new CustomEvent("hide-bottom-nav", { detail: shouldHide }));
     return () => {

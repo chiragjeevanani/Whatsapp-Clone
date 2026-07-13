@@ -21,6 +21,7 @@ const SETTINGS_LIST = [
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { logoutUser } = useAuth();
   
   const { isDarkMode, toggleTheme } = useTheme();
   
@@ -99,7 +100,8 @@ export default function SettingsPage() {
           <div 
             onClick={() => {
               if (confirm("Are you sure you want to log out?")) {
-                router.push("/login");
+                logoutUser();
+                router.push("/");
               }
             }}
             className="flex items-center px-5 py-4 hover:bg-zinc-50 dark:hover:bg-[#202c33]/40 cursor-pointer transition-colors border-b border-zinc-100/70 dark:border-[#222d34]/40"
@@ -116,7 +118,8 @@ export default function SettingsPage() {
           <div 
             onClick={() => {
               if (confirm("WARNING: This will permanently delete your account and all associated data. Are you sure you want to proceed?")) {
-                router.push("/login");
+                logoutUser();
+                router.push("/");
               }
             }}
             className="flex items-center px-5 py-4 hover:bg-zinc-50 dark:hover:bg-[#202c33]/40 cursor-pointer transition-colors text-red-500 dark:text-red-400"
