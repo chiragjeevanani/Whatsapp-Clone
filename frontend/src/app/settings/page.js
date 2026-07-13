@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navigation from "@/components/layout/Navigation";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SETTINGS_LIST = [
   { name: "Account", subtitle: "Security notifications, change number", icon: "key" },
