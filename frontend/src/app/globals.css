@@ -389,4 +389,12 @@ body {
     color: #ff2d55 !important;
 }
 
+/* Force dark text for inputs inside light-themed forms in dark mode */
+.dark form input {
+  color: #111b21 !important;
+}
+.dark form input::placeholder {
+  color: #a1a1aa !important;
+}
+
 /* Redundant overrides cleaned up */
