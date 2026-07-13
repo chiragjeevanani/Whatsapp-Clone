@@ -220,13 +220,13 @@ export default function VerifyPage() {
             <div className="flex items-center gap-1 text-[13px] text-on-surface-variant mt-1">
               {timeLeft > 0 ? (
                 <span>
-                  Resend in <span className="font-semibold text-primary">0:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span>
+                  Resend in <span className="font-semibold text-[#006d2f]">0:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span>
                 </span>
               ) : (
                 <button
                   type="button"
                   onClick={handleResend}
-                  className="text-primary font-semibold hover:underline focus:outline-none hover:cursor-pointer"
+                  className="text-[#006d2f] font-semibold hover:underline focus:outline-none hover:cursor-pointer"
                 >
                   Resend Code
                 </button>

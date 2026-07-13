@@ -206,11 +206,11 @@ export default function LoginPage() {
           {/* Terms */}
           <p className="text-[11.5px] text-on-surface-variant text-center leading-relaxed">
             By continuing, you agree to our{" "}
-            <Link href="#" className="text-primary font-medium hover:underline">
+            <Link href="#" className="text-[#006d2f] font-medium hover:underline">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="#" className="text-primary font-medium hover:underline">
+            <Link href="#" className="text-[#006d2f] font-medium hover:underline">
               Privacy Policy
             </Link>
           </p>
