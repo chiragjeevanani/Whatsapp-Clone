@@ -1,39 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+import { login } from "../../services/auth/login";
 
-const COUNTRIES = [
-  { name: "United States", code: "+1", flag: "🇺🇸" },
-  { name: "India", code: "+91", flag: "🇮🇳" },
-  { name: "United Kingdom", code: "+44", flag: "🇬🇧" },
-  { name: "Canada", code: "+1", flag: "🇨🇦" },
-  { name: "Australia", code: "+61", flag: "🇦🇺" },
-  { name: "Germany", code: "+49", flag: "🇩🇪" },
-  { name: "France", code: "+33", flag: "🇫🇷" },
-  { name: "Brazil", code: "+55", flag: "🇧🇷" },
-  { name: "Japan", code: "+81", flag: "🇯🇵" },
-  { name: "China", code: "+86", flag: "🇨🇳" },
-  { name: "South Africa", code: "+27", flag: "🇿🇦" },
-  { name: "Mexico", code: "+52", flag: "🇲🇽" },
-  { name: "Russia", code: "+7", flag: "🇷🇺" },
-  { name: "Singapore", code: "+65", flag: "🇸🇬" },
-  { name: "Spain", code: "+34", flag: "🇪🇸" },
-  { name: "Italy", code: "+39", flag: "🇮🇹" },
-  { name: "Netherlands", code: "+31", flag: "🇳🇱" },
-  { name: "Saudi Arabia", code: "+966", flag: "🇸🇦" },
-  { name: "United Arab Emirates", code: "+971", flag: "🇦🇪" },
-  { name: "Indonesia", code: "+62", flag: "🇮🇩" },
-];
+const INDIA_COUNTRY = { name: "India", code: "+91" };
 
 export default function LoginPage() {
   const router = useRouter();
   const [phone, setPhone] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const dropdownRef = useRef(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const getMinMaxPhoneLength = (countryCode) => {
     if (countryCode === "+1") return { min: 10, max: 10 };
@@ -44,40 +24,28 @@ export default function LoginPage() {
 
   const formatPhoneNumber = (digits, countryCode) => {
     if (countryCode === "+1") {
-      // Format: (XXX) XXX-XXXX
       let formatted = "";
       if (digits.length > 0) {
         formatted = "(" + digits.substring(0, 3);
-        if (digits.length > 3) {
-          formatted += ") " + digits.substring(3, 6);
-        }
-        if (digits.length > 6) {
-          formatted += "-" + digits.substring(6, 10);
-        }
+        if (digits.length > 3) formatted += ") " + digits.substring(3, 6);
+        if (digits.length > 6) formatted += "-" + digits.substring(6, 10);
       }
       return formatted;
     } else if (countryCode === "+91") {
-      // Format: XXXXX XXXXX
       let formatted = "";
       if (digits.length > 0) {
         formatted = digits.substring(0, 5);
-        if (digits.length > 5) {
-          formatted += " " + digits.substring(5, 10);
-        }
+        if (digits.length > 5) formatted += " " + digits.substring(5, 10);
       }
       return formatted;
     } else if (countryCode === "+44") {
-      // Format: XXXXX XXXXXX
       let formatted = "";
       if (digits.length > 0) {
         formatted = digits.substring(0, 5);
-        if (digits.length > 5) {
-          formatted += " " + digits.substring(5, 11);
-        }
+        if (digits.length > 5) formatted += " " + digits.substring(5, 11);
       }
       return formatted;
     } else {
-      // Generic format: groups of 4 digits
       let parts = [];
       for (let i = 0; i < digits.length; i += 4) {
         parts.push(digits.substring(i, i + 4));
@@ -86,38 +54,29 @@ export default function LoginPage() {
     }
   };
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // Re-format phone number when country changes
-  useEffect(() => {
-    const { max } = getMinMaxPhoneLength(selectedCountry.code);
-    const digits = phone.replace(/\D/g, "").substring(0, max);
-    setPhone(formatPhoneNumber(digits, selectedCountry.code));
-  }, [selectedCountry]);
-
   const handlePhoneChange = (e) => {
-    const { max } = getMinMaxPhoneLength(selectedCountry.code);
+    const { max } = getMinMaxPhoneLength(INDIA_COUNTRY.code);
     const digits = e.target.value.replace(/\D/g, "").substring(0, max);
-    setPhone(formatPhoneNumber(digits, selectedCountry.code));
+    setPhone(formatPhoneNumber(digits, INDIA_COUNTRY.code));
   };
 
-  const { min } = getMinMaxPhoneLength(selectedCountry.code);
+  const { min } = getMinMaxPhoneLength(INDIA_COUNTRY.code);
   const isPhoneValid = phone.replace(/\D/g, "").length >= min;
 
-  const handleNext = (e) => {
+  const handleNext = async (e) => {
     e.preventDefault();
-    if (isPhoneValid) {
-      router.push("/login/verify");
+    if (isPhoneValid && !loading) {
+      setLoading(true);
+      setError("");
+      const fullPhoneNumber = INDIA_COUNTRY.code + phone.replace(/\s+/g, "");
+      try {
+        await login(fullPhoneNumber);
+        router.push(`/login/verify?phone=${encodeURIComponent(fullPhoneNumber)}`);
+      } catch (err) {
+        setError(err.message || "Failed to request OTP. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -125,173 +84,163 @@ export default function LoginPage() {
     router.push("/");
   };
 
-  const filteredCountries = COUNTRIES.filter((country) =>
-    country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    country.code.includes(searchQuery)
-  );
-
-  const paddingLeftClass = selectedCountry.code.length > 3 ? "pl-22" : selectedCountry.code.length > 2 ? "pl-18" : "pl-16";
-  const labelLeftClass = selectedCountry.code.length > 3 ? "left-22" : selectedCountry.code.length > 2 ? "left-18" : "left-16";
-
   return (
-    <div className="w-full bg-background min-h-screen font-body-md text-on-background antialiased flex flex-col items-center justify-center p-4">
-      {/* Top App Bar equivalent */}
-      <header className="w-full max-w-md flex justify-between items-center py-4 absolute top-0 left-0 right-0 px-4 mx-auto">
-        <button
-          onClick={handleBack}
-          type="button"
-          aria-label="Go back"
-          className="p-2 -ml-2 rounded-full hover:bg-surface-variant transition-colors hover:cursor-pointer active:opacity-80"
-        >
-          <span className="material-symbols-outlined text-on-surface">arrow_back</span>
-        </button>
-        <div className="flex-1"></div>
-        <button
-          type="button"
-          aria-label="More options"
-          className="p-2 -mr-2 rounded-full hover:bg-surface-variant transition-colors hover:cursor-pointer active:opacity-80"
-        >
-          <span className="material-symbols-outlined text-on-surface">more_vert</span>
-        </button>
-      </header>
+    <div className="w-full min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
+      style={{
+        background: "linear-gradient(145deg, #e8f5e9 0%, #f1f8e9 30%, #ffffff 60%, #e0f2f1 100%)",
+      }}
+    >
+      {/* Decorative background circles */}
+      <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-[0.07]" style={{ background: "radial-gradient(circle, #25d366, transparent 70%)" }} />
+      <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #006d2f, transparent 70%)" }} />
 
-      {/* Main Content Container */}
-      <main className="w-full max-w-md flex flex-col items-center mt-12">
-        {/* Header Text */}
-        <div className="text-center mb-8 w-full">
-          <h1 className="font-display-lg text-display-lg text-primary mb-2 font-bold">Verify your phone number</h1>
-          <p className="font-body-md text-body-md text-on-surface-variant max-w-[280px] mx-auto text-center">
-            Zetto will send an SMS message to verify your phone number. Carrier SMS charges may apply.
-          </p>
-        </div>
-
-        {/* Form Area */}
+      {/* Main Content */}
+      <main className="w-full max-w-[400px] flex flex-col items-center px-5 animate-[fadeInUp_0.5s_ease-out]">
+        {/* Form Card — logo, title, inputs all inside */}
         <form
           onSubmit={handleNext}
-          className="w-full bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col gap-6 border border-outline-variant/30 relative"
+          className="w-full rounded-2xl p-6 flex flex-col items-center gap-5 relative"
+          style={{
+            background: "rgba(255, 255, 255, 0.72)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            boxShadow: "0 4px 32px rgba(0, 109, 47, 0.06), 0 1px 4px rgba(0,0,0,0.04)",
+            border: "1px solid rgba(255, 255, 255, 0.7)",
+          }}
         >
-          {/* Country Selector */}
-          <div className="relative" ref={dropdownRef}>
-            <button
-              type="button"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full flex items-center justify-between py-3 border-b border-outline-variant hover:bg-surface-container/50 transition-colors focus:outline-none focus:border-secondary hover:cursor-pointer"
-            >
-              <span className="font-body-lg text-body-lg text-on-surface flex items-center gap-2">
-                <span aria-hidden="true" className="text-2xl leading-none">{selectedCountry.flag}</span>
-                {selectedCountry.name}
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="font-body-lg text-body-lg text-on-surface-variant">{selectedCountry.code}</span>
-                <span className="material-symbols-outlined text-on-surface-variant">arrow_drop_down</span>
-              </div>
-            </button>
-
-            {/* Dropdown Menu */}
-            {isDropdownOpen && (
-              <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-xl max-h-60 overflow-y-auto flex flex-col">
-                <div className="sticky top-0 bg-surface-container-lowest p-2 border-b border-outline-variant flex items-center gap-2">
-                  <span className="material-symbols-outlined text-on-surface-variant text-sm">search</span>
-                  <input
-                    type="text"
-                    placeholder="Search country..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-transparent text-body-md text-on-surface outline-none py-1 placeholder-on-surface-variant/60"
-                    autoFocus
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className="p-1 hover:bg-surface-variant rounded-full text-on-surface-variant"
-                    >
-                      <span className="material-symbols-outlined text-sm leading-none">close</span>
-                    </button>
-                  )}
-                </div>
-                <div className="flex-1 overflow-y-auto no-scrollbar">
-                  {filteredCountries.length > 0 ? (
-                    filteredCountries.map((country) => (
-                      <button
-                        key={country.name}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCountry(country);
-                          setIsDropdownOpen(false);
-                          setSearchQuery("");
-                        }}
-                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-variant transition-colors text-left hover:cursor-pointer"
-                      >
-                        <span className="font-body-md text-on-surface flex items-center gap-2">
-                          <span aria-hidden="true" className="text-xl">{country.flag}</span>
-                          {country.name}
-                        </span>
-                        <span className="font-body-md text-on-surface-variant">{country.code}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center text-body-md text-on-surface-variant">
-                      No countries found
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Phone Number Input */}
-          <div className="relative w-full floating-input mt-2">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <span className="font-body-lg text-body-lg text-on-surface-variant border-r border-outline-variant pr-2">
-                {selectedCountry.code}
-              </span>
-            </div>
-            {/* Input field */}
-            <input
-              type="tel"
-              id="phone"
-              autoComplete="tel"
-              value={phone}
-              onChange={handlePhoneChange}
-              placeholder="Phone number"
-              className={`block w-full ${paddingLeftClass} pr-3 py-4 bg-surface-container-lowest border border-outline-variant rounded-full font-body-lg text-body-lg text-on-surface focus:ring-1 focus:ring-secondary focus:border-secondary transition-colors outline-none placeholder-transparent`}
-              required
+          {/* Back button inside card */}
+          <button
+            onClick={handleBack}
+            type="button"
+            aria-label="Go back"
+            className="absolute top-4 left-4 p-2 rounded-full hover:bg-on-surface/5 transition-all hover:cursor-pointer active:scale-95 z-10"
+          >
+            <span className="material-symbols-outlined text-on-surface-variant text-[20px]">arrow_back</span>
+          </button>
+          {/* Logo */}
+          <div className="mb-1">
+            <img
+              src="/logo.png?v=2"
+              alt="AppMetaChat"
+              width={140}
+              height={140}
+              className="object-contain drop-shadow-md"
+              priority="true"
             />
-            {/* Floating Label */}
-            <label
-              htmlFor="phone"
-              className={`absolute ${labelLeftClass} top-1/2 -translate-y-1/2 text-on-surface-variant font-body-lg text-body-lg transition-all duration-200 pointer-events-none origin-left ml-1 px-1`}
-            >
-              Phone number
-            </label>
           </div>
 
-          <p className="font-label-sm text-label-sm text-on-surface-variant text-center mt-1">
+          {/* Title + Subtitle */}
+          <h1 className="text-[20px] font-semibold text-on-surface tracking-tight">
+            Enter your phone number
+          </h1>
+          <p className="text-[13.5px] text-on-surface-variant text-center leading-relaxed max-w-[280px] -mt-3 mb-1">
+            We will send you an SMS to verify your number.
+          </p>
+          {/* Country Selector (Static Display, Premium Feel) */}
+          <div className="flex items-center gap-3 py-3 px-4 rounded-xl bg-surface-container/30 border border-outline-variant/20 w-full select-none">
+            <Image
+              src="https://flagcdn.com/w40/in.png"
+              alt="India flag"
+              width={22}
+              height={15}
+              className="rounded-[2px] shrink-0 shadow-sm"
+              unoptimized
+            />
+            <span className="text-on-surface text-[14.5px] font-medium flex-1 text-left">India</span>
+          </div>
+
+          {/* Split Phone Input Fields */}
+          <div className="flex gap-2.5 w-full">
+            {/* Country Code Block */}
+            <div className="w-[72px] h-[52px] rounded-xl border border-outline-variant/30 bg-surface-container/20 flex items-center justify-center font-semibold text-on-surface text-[15px] select-none shrink-0">
+              {INDIA_COUNTRY.code}
+            </div>
+
+            {/* Phone Number Field */}
+            <div
+              className={`flex-1 min-w-0 h-[52px] flex items-center gap-2 rounded-xl border-2 transition-all duration-200 px-3.5 bg-white/50 ${
+                isFocused ? "border-primary shadow-[0_0_0_3px_rgba(37,211,102,0.12)]" : "border-outline-variant/30 hover:border-outline-variant/50"
+              }`}
+            >
+              <input
+                type="tel"
+                id="phone"
+                autoComplete="tel"
+                value={phone}
+                onChange={handlePhoneChange}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                placeholder="Phone number"
+                className="flex-1 min-w-0 bg-transparent py-3 text-on-surface text-[15px] outline-none placeholder:text-on-surface-variant/40 caret-primary"
+                required
+                autoFocus
+              />
+              {phone && (
+                <button
+                  type="button"
+                  onClick={() => setPhone("")}
+                  className="p-1 rounded-full hover:bg-on-surface/5 transition-colors"
+                  aria-label="Clear phone number"
+                >
+                  <span className="material-symbols-outlined text-on-surface-variant text-[18px]">close</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <p className="text-[12.5px] text-error font-medium text-center w-full px-2">
+              {error}
+            </p>
+          )}
+
+          {/* Terms */}
+          <p className="text-[11.5px] text-on-surface-variant text-center leading-relaxed">
             By continuing, you agree to our{" "}
-            <Link href="#" className="text-secondary hover:underline">
+            <Link href="#" className="text-primary font-medium hover:underline">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="#" className="text-secondary hover:underline">
+            <Link href="#" className="text-primary font-medium hover:underline">
               Privacy Policy
             </Link>
-            .
           </p>
 
-          {/* Continue Button */}
-          <div className="w-full mt-4 flex justify-center">
-            <button
-              type="submit"
-              disabled={!isPhoneValid}
-              className="bg-primary-container disabled:opacity-50 disabled:cursor-not-allowed text-on-primary-container font-headline-sm text-headline-sm px-8 py-3 rounded-full shadow-sm hover:opacity-90 active:scale-95 transition-all w-full max-w-[200px] flex items-center justify-center gap-1 hover:cursor-pointer font-semibold"
-            >
-              Next
-            </button>
-          </div>
+          {/* Next Button */}
+          <button
+            type="submit"
+            disabled={!isPhoneValid || loading}
+            className={`w-full h-[50px] rounded-xl font-semibold text-[15px] flex items-center justify-center gap-2 transition-all duration-300 hover:cursor-pointer active:scale-[0.98] ${
+              isPhoneValid && !loading
+                ? "bg-primary text-on-primary shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-105"
+                : "bg-surface-container-high text-on-surface-variant/40 cursor-not-allowed"
+            }`}
+          >
+            {loading ? "Sending..." : "Next"}
+            {!loading && <span className="material-symbols-outlined text-[20px]">arrow_forward</span>}
+          </button>
         </form>
+
+        {/* Carrier notice */}
+        <p className="text-[11.5px] text-on-surface-variant/60 mt-5 text-center">
+          Carrier SMS charges may apply
+        </p>
       </main>
+
+      {/* Fade-in animation keyframes */}
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(16px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }
-

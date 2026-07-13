@@ -1,0 +1,30 @@
+const mongoose = require("mongoose");
+
+const contactSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    contactUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    customName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Prevent duplicate contacts
+contactSchema.index({ userId: 1, contactUserId: 1 }, { unique: true });
+
+module.exports = mongoose.model("Contact", contactSchema);

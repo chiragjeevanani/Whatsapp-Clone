@@ -2,12 +2,18 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { verifyOtp } from "../../../services/auth/verify";
 
 export default function VerifyPage() {
   const router = useRouter();
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [timeLeft, setTimeLeft] = useState(59);
   const [verified, setVerified] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const inputRefs = [
     useRef(null),
     useRef(null),
@@ -16,6 +22,12 @@ export default function VerifyPage() {
     useRef(null),
     useRef(null),
   ];
+
+  // Extract phone number from URL parameters safely on client side
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setPhoneNumber(params.get("phone") || "");
+  }, []);
 
   // Timer countdown logic
   useEffect(() => {
@@ -27,7 +39,6 @@ export default function VerifyPage() {
   }, [timeLeft]);
 
   const handleInputChange = (index, value) => {
-    // Keep only single numeric digit
     const digit = value.replace(/\D/g, "").slice(-1);
     const newCode = [...code];
     newCode[index] = digit;
@@ -42,13 +53,11 @@ export default function VerifyPage() {
   const handleKeyDown = (index, e) => {
     if (e.key === "Backspace") {
       if (code[index] === "" && index > 0) {
-        // Clear previous input and focus it
         const newCode = [...code];
         newCode[index - 1] = "";
         setCode(newCode);
         inputRefs[index - 1].current.focus();
       } else {
-        // Clear current input
         const newCode = [...code];
         newCode[index] = "";
         setCode(newCode);
@@ -60,15 +69,32 @@ export default function VerifyPage() {
     setTimeLeft(59);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const fullCode = code.join("");
-    if (fullCode.length === 6) {
-      setVerified(true);
-      // Simulate redirection after a brief checkmark animation
-      setTimeout(() => {
-        router.push("/chats");
-      }, 1000);
+    if (fullCode.length === 6 && !loading) {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await verifyOtp(phoneNumber, fullCode);
+        
+        // Save tokens to localStorage
+        if (response?.data?.tokens?.accessToken) {
+          localStorage.setItem("token", response.data.tokens.accessToken);
+        }
+        if (response?.data?.tokens?.refreshToken) {
+          localStorage.setItem("refreshToken", response.data.tokens.refreshToken);
+        }
+        
+        setVerified(true);
+        setTimeout(() => {
+          router.push("/chats");
+        }, 1000);
+      } catch (err) {
+        setError(err.message || "Invalid code. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -77,80 +103,119 @@ export default function VerifyPage() {
   };
 
   return (
-    <div className="w-full bg-background min-h-screen text-on-background antialiased flex flex-col items-center justify-center p-4">
-      {/* Back Header */}
-      <header className="w-full max-w-md flex justify-between items-center py-4 absolute top-0 left-0 right-0 px-4 mx-auto">
-        <button
-          onClick={handleBack}
-          type="button"
-          aria-label="Go back"
-          className="p-2 -ml-2 rounded-full hover:bg-surface-variant transition-colors hover:cursor-pointer active:opacity-80"
-        >
-          <span className="material-symbols-outlined text-on-surface">arrow_back</span>
-        </button>
-        <div className="flex-1"></div>
-        <button
-          type="button"
-          aria-label="More options"
-          className="p-2 -mr-2 rounded-full hover:bg-surface-variant transition-colors hover:cursor-pointer active:opacity-80"
-        >
-          <span className="material-symbols-outlined text-on-surface">more_vert</span>
-        </button>
-      </header>
+    <div className="w-full min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
+      style={{
+        background: "linear-gradient(145deg, #e8f5e9 0%, #f1f8e9 30%, #ffffff 60%, #e0f2f1 100%)",
+      }}
+    >
+      {/* Decorative background circles */}
+      <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-[0.07]" style={{ background: "radial-gradient(circle, #25d366, transparent 70%)" }} />
+      <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full opacity-[0.05]" style={{ background: "radial-gradient(circle, #006d2f, transparent 70%)" }} />
 
-      {/* Main Container */}
-      <main className="w-full max-w-md bg-surface-container-lowest rounded-xl shadow-lg p-8 flex flex-col gap-6 border border-outline-variant mt-12">
-        {/* Header */}
-        <header className="flex flex-col gap-2 text-center">
-          <h1 className="font-display-lg text-display-lg text-on-surface font-bold">Enter code</h1>
-          <p className="font-body-md text-body-md text-on-surface-variant">
-            We&apos;ve sent a 6-digit code to your phone number.
-          </p>
-        </header>
+      {/* Main Content */}
+      <main className="w-full max-w-[400px] flex flex-col items-center px-5 animate-[fadeInUp_0.5s_ease-out]">
+        {/* Form Card */}
+        <form
+          onSubmit={handleSubmit}
+          className="w-full rounded-2xl p-6 flex flex-col items-center gap-6 relative"
+          style={{
+            background: "rgba(255, 255, 255, 0.72)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            boxShadow: "0 4px 32px rgba(0, 109, 47, 0.06), 0 1px 4px rgba(0,0,0,0.04)",
+            border: "1px solid rgba(255, 255, 255, 0.7)",
+          }}
+        >
+          {/* Back button inside card */}
+          <button
+            onClick={handleBack}
+            type="button"
+            aria-label="Go back"
+            className="absolute top-4 left-4 p-2 rounded-full hover:bg-on-surface/5 transition-all hover:cursor-pointer active:scale-95 z-10"
+          >
+            <span className="material-symbols-outlined text-on-surface-variant text-[20px]">arrow_back</span>
+          </button>
+          {/* Logo */}
+          <div className="mb-1">
+            <img
+              src="/logo.png?v=2"
+              alt="AppMetaChat"
+              width={140}
+              height={140}
+              className="object-contain drop-shadow-md"
+              priority="true"
+            />
+          </div>
 
-        {/* OTP Input Form */}
-        <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-          <div className="flex justify-between gap-1 md:gap-2" id="otp-container">
+          {/* Title + Subtitle */}
+          <div className="text-center">
+            <h1 className="text-[20px] font-semibold text-on-surface tracking-tight mb-1">
+              Enter code
+            </h1>
+            <p className="text-[13.5px] text-on-surface-variant max-w-[280px] leading-relaxed">
+              We&apos;ve sent a 6-digit code to your phone number.
+            </p>
+          </div>
+
+           {/* OTP Inputs */}
+          <div className="flex justify-between gap-2 w-full px-1" id="otp-container">
             {code.map((val, idx) => (
               <input
                 key={idx}
                 ref={inputRefs[idx]}
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={1}
                 value={val}
                 onChange={(e) => handleInputChange(idx, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(idx, e)}
-                className="otp-input w-12 h-14 md:w-14 md:h-16 text-center font-headline-md text-headline-md rounded-lg border border-outline-variant bg-surface focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-colors"
+                className="w-11 h-14 text-center font-bold text-[20px] rounded-xl border border-outline-variant/60 bg-white/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                 autoFocus={idx === 0}
               />
             ))}
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <p className="text-[12.5px] text-error font-medium text-center w-full px-2">
+              {error}
+            </p>
+          )}
+
           {/* Actions */}
-          <div className="flex flex-col gap-4 items-center">
+          <div className="flex flex-col gap-4 w-full items-center">
+            {/* Verify Button */}
             <button
               type="submit"
-              disabled={code.join("").length < 6 || verified}
-              className={`w-full h-12 text-on-primary rounded-lg font-headline-sm text-headline-sm transition-colors shadow-sm active:scale-[0.98] flex items-center justify-center gap-1 hover:cursor-pointer font-semibold ${
-                verified ? "bg-secondary hover:bg-secondary" : "bg-primary-container hover:bg-primary"
+              disabled={code.join("").length < 6 || loading || verified}
+              className={`w-full h-[50px] rounded-xl font-semibold text-[15px] flex items-center justify-center gap-2 transition-all duration-300 hover:cursor-pointer active:scale-[0.98] ${
+                code.join("").length === 6 && !loading && !verified
+                  ? "bg-primary text-on-primary shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-105"
+                  : verified
+                  ? "bg-secondary text-on-secondary shadow-md"
+                  : "bg-surface-container-high text-on-surface-variant/40 cursor-not-allowed"
               }`}
             >
-              <span>{verified ? "Verified" : "Verify"}</span>
-              <span className="material-symbols-outlined">
-                {verified ? "check_circle" : "arrow_forward"}
-              </span>
+              <span>{loading ? "Verifying..." : verified ? "Verified" : "Verify"}</span>
+              {!loading && (
+                <span className="material-symbols-outlined text-[20px]">
+                  {verified ? "check_circle" : "arrow_forward"}
+                </span>
+              )}
             </button>
 
-            <div className="flex items-center gap-1 font-body-md text-body-md text-on-surface-variant">
+            {/* Timer / Resend Action */}
+            <div className="flex items-center gap-1 text-[13px] text-on-surface-variant mt-1">
               {timeLeft > 0 ? (
                 <span>
-                  Resend in <span className="font-medium">0:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span>
+                  Resend in <span className="font-semibold text-primary">0:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span>
                 </span>
               ) : (
                 <button
                   type="button"
                   onClick={handleResend}
-                  className="text-primary font-medium hover:underline focus:outline-none hover:cursor-pointer"
+                  className="text-primary font-semibold hover:underline focus:outline-none hover:cursor-pointer"
                 >
                   Resend Code
                 </button>
@@ -159,6 +224,20 @@ export default function VerifyPage() {
           </div>
         </form>
       </main>
+
+      {/* Fade-in animation keyframes */}
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(16px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }

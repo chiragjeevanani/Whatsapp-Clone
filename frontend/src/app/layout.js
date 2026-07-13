@@ -21,11 +21,11 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "Zetto Premium Messenger",
+  title: "AppMetaChat Messenger",
   description: "A premium responsive messaging application",
 };
 
-import SwipeNavigation from "@/components/SwipeNavigation";
+import SwipeNavigation from "@/components/layout/SwipeNavigation";
 
 export default function RootLayout({ children }) {
   return (

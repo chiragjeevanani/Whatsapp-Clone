@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Navigation from "@/components/Navigation";
+import Navigation from "@/components/layout/Navigation";
 import { useTheme } from "@/hooks/useTheme";
 
 const SETTINGS_LIST = [

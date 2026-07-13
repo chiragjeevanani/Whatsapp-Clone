@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 
 // Fetch the HTML of the login page
-http.get('http://localhost:3000/login', (res) => {
+http.get('http://localhost:5173/login', (res) => {
   let html = '';
   res.on('data', (chunk) => { html += chunk; });
   res.on('end', () => {
@@ -21,7 +21,7 @@ http.get('http://localhost:3000/login', (res) => {
 
     if (stylesheets.length > 0) {
       // Fetch the first stylesheet
-      const cssUrl = stylesheets[0].startsWith('http') ? stylesheets[0] : `http://localhost:3000${stylesheets[0]}`;
+      const cssUrl = stylesheets[0].startsWith('http') ? stylesheets[0] : `http://localhost:5173${stylesheets[0]}`;
       http.get(cssUrl, (cssRes) => {
         let css = '';
         cssRes.on('data', (chunk) => { css += chunk; });
