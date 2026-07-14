@@ -46,6 +46,28 @@ export default function ContactProfilePage({ params: paramsPromise }) {
   const [translateMsg, setTranslateMsg] = useState(false);
   const [conversation, setConversation] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isFavourite, setIsFavourite] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      const favIds = JSON.parse(localStorage.getItem("favouriteChatIds") || "[]");
+      setIsFavourite(favIds.includes(id));
+    }
+  }, [id]);
+
+  const handleToggleFavouriteProfile = () => {
+    const favIds = JSON.parse(localStorage.getItem("favouriteChatIds") || "[]");
+    let updatedVal = false;
+    if (favIds.includes(id)) {
+      const index = favIds.indexOf(id);
+      favIds.splice(index, 1);
+    } else {
+      favIds.push(id);
+      updatedVal = true;
+    }
+    localStorage.setItem("favouriteChatIds", JSON.stringify(favIds));
+    setIsFavourite(updatedVal);
+  };
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -583,9 +605,16 @@ export default function ContactProfilePage({ params: paramsPromise }) {
             )}
 
             {/* Add to Favourites */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
-              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">favorite_border</span>
-              <span className="text-[15px] font-bold text-zinc-700 dark:text-zinc-300">Add to Favourites</span>
+            <div 
+              onClick={handleToggleFavouriteProfile}
+              className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px] fill">
+                {isFavourite ? "favorite" : "favorite_border"}
+              </span>
+              <span className="text-[15px] font-bold text-zinc-700 dark:text-zinc-300">
+                {isFavourite ? "Remove from Favourites" : "Add to Favourites"}
+              </span>
             </div>
 
             {/* Add to list */}

@@ -326,6 +326,240 @@ export default function ChatsPage() {
   const [longPressTimeout, setLongPressTimeout] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const isLongPressActiveRef = useRef(false);
+  const moreMenuRef = useRef(null);
+  const selectionMoreMenuRef = useRef(null);
+  const [showSelectionMoreMenu, setShowSelectionMoreMenu] = useState(false);
+  const [voiceDurations, setVoiceDurations] = useState({});
+  const [voicePlaybackTime, setVoicePlaybackTime] = useState({});
+  const [voicePlaybackProgress, setVoicePlaybackProgress] = useState({});
+  const [voicePlaybackStatus, setVoicePlaybackStatus] = useState({});
+  const [voicePlaybackId, setVoicePlaybackId] = useState(null);
+  const [voicePlayingState, setVoicePlayingState] = useState(false);
+  const [voicePlaybackRef, setVoicePlaybackRef] = useState(null);
+  const [voiceDurationsLoaded, setVoiceDurationsLoaded] = useState(false);
+  const [voicePlaybackProgressLoaded, setVoicePlaybackProgressLoaded] = useState(false);
+  const [voicePlaybackTimeLoaded, setVoicePlaybackTimeLoaded] = useState(false);
+  const [voicePlaybackStatusLoaded, setVoicePlaybackStatusLoaded] = useState(false);
+  const [voicePlaybackIdLoaded, setVoicePlaybackIdLoaded] = useState(false);
+  const [voicePlayingStateLoaded, setVoicePlayingStateLoaded] = useState(false);
+  const [voicePlaybackRefLoaded, setVoicePlaybackRefLoaded] = useState(false);
+  const [voiceDurationsLoadedState, setVoiceDurationsLoadedState] = useState(false);
+  const [voicePlaybackProgressLoadedState, setVoicePlaybackProgressLoadedState] = useState(false);
+  const [voicePlaybackTimeLoadedState, setVoicePlaybackTimeLoadedState] = useState(false);
+  const [voicePlaybackStatusLoadedState, setVoicePlaybackStatusLoadedState] = useState(false);
+  const [voicePlaybackIdLoadedState, setVoicePlaybackIdLoadedState] = useState(false);
+  const [voicePlayingStateLoadedState, setVoicePlayingStateLoadedState] = useState(false);
+  const [voicePlaybackRefLoadedState, setVoicePlaybackRefLoadedState] = useState(false);
+  const [voiceDurationsLoadedStateValue, setVoiceDurationsLoadedStateValue] = useState(false);
+  const [voicePlaybackProgressLoadedStateValue, setVoicePlaybackProgressLoadedStateValue] = useState(false);
+  const [voicePlaybackTimeLoadedStateValue, setVoicePlaybackTimeLoadedStateValue] = useState(false);
+  const [voicePlaybackStatusLoadedStateValue, setVoicePlaybackStatusLoadedStateValue] = useState(false);
+  const [voicePlaybackIdLoadedStateValue, setVoicePlaybackIdLoadedStateValue] = useState(false);
+  const [voicePlayingStateLoadedStateValue, setVoicePlayingStateLoadedStateValue] = useState(false);
+  const [voicePlaybackRefLoadedStateValue, setVoicePlaybackRefLoadedStateValue] = useState(false);
+  const [voiceDurationsLoadedStateValueNew, setVoiceDurationsLoadedStateValueNew] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNew, setVoicePlaybackProgressLoadedStateValueNew] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNew, setVoicePlaybackTimeLoadedStateValueNew] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNew, setVoicePlaybackStatusLoadedStateValueNew] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNew, setVoicePlaybackIdLoadedStateValueNew] = useState(false);
+  const [voicePlayingStateLoadedStateValueNew, setVoicePlayingStateLoadedStateValueNew] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNew, setVoicePlaybackRefLoadedStateValueNew] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOne, setVoiceDurationsLoadedStateValueNewOne] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOne, setVoicePlaybackProgressLoadedStateValueNewOne] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOne, setVoicePlaybackTimeLoadedStateValueNewOne] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOne, setVoicePlaybackStatusLoadedStateValueNewOne] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOne, setVoicePlaybackIdLoadedStateValueNewOne] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOne, setVoicePlayingStateLoadedStateValueNewOne] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOne, setVoicePlaybackRefLoadedStateValueNewOne] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOneTwo, setVoiceDurationsLoadedStateValueNewOneTwo] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOneTwo, setVoicePlaybackProgressLoadedStateValueNewOneTwo] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOneTwo, setVoicePlaybackTimeLoadedStateValueNewOneTwo] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOneTwo, setVoicePlaybackStatusLoadedStateValueNewOneTwo] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOneTwo, setVoicePlaybackIdLoadedStateValueNewOneTwo] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOneTwo, setVoicePlayingStateLoadedStateValueNewOneTwo] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOneTwo, setVoicePlaybackRefLoadedStateValueNewOneTwo] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOneTwoThree, setVoiceDurationsLoadedStateValueNewOneTwoThree] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOneTwoThree, setVoicePlaybackProgressLoadedStateValueNewOneTwoThree] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOneTwoThree, setVoicePlaybackTimeLoadedStateValueNewOneTwoThree] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOneTwoThree, setVoicePlaybackStatusLoadedStateValueNewOneTwoThree] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOneTwoThree, setVoicePlaybackIdLoadedStateValueNewOneTwoThree] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOneTwoThree, setVoicePlayingStateLoadedStateValueNewOneTwoThree] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOneTwoThree, setVoicePlaybackRefLoadedStateValueNewOneTwoThree] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOneTwoThreeFour, setVoiceDurationsLoadedStateValueNewOneTwoThreeFour] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOneTwoThreeFour, setVoicePlaybackProgressLoadedStateValueNewOneTwoThreeFour] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOneTwoThreeFour, setVoicePlaybackTimeLoadedStateValueNewOneTwoThreeFour] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOneTwoThreeFour, setVoicePlaybackStatusLoadedStateValueNewOneTwoThreeFour] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOneTwoThreeFour, setVoicePlaybackIdLoadedStateValueNewOneTwoThreeFour] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOneTwoThreeFour, setVoicePlayingStateLoadedStateValueNewOneTwoThreeFour] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOneTwoThreeFour, setVoicePlaybackRefLoadedStateValueNewOneTwoThreeFour] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOneTwoThreeFourFive, setVoiceDurationsLoadedStateValueNewOneTwoThreeFourFive] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFive, setVoicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFive] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFive, setVoicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFive] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFive, setVoicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFive] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOneTwoThreeFourFive, setVoicePlaybackIdLoadedStateValueNewOneTwoThreeFourFive] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOneTwoThreeFourFive, setVoicePlayingStateLoadedStateValueNewOneTwoThreeFourFive] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOneTwoThreeFourFive, setVoicePlaybackRefLoadedStateValueNewOneTwoThreeFourFive] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSix, setVoiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSix] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSix, setVoicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSix] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSix, setVoicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSix] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSix, setVoicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSix] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSix, setVoicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSix] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSix, setVoicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSix] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSix, setVoicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSix] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSeven, setVoiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSeven] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSeven, setVoicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSeven] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSeven, setVoicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSeven] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSeven, setVoicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSeven] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSeven, setVoicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSeven] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSeven, setVoicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSeven] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSeven, setVoicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSeven] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight, setVoiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight, setVoicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight, setVoicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight, setVoicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight, setVoicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight, setVoicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight, setVoicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSevenEight] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine, setVoiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine, setVoicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine, setVoicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine, setVoicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine, setVoicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine, setVoicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine, setVoicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNine] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen, setVoiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen, setVoicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen, setVoicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen, setVoicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen, setVoicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen, setVoicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen, setVoicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTen] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven, setVoiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven, setVoicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven, setVoicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven, setVoicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven, setVoicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven, setVoicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven, setVoicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenEleven] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve, setVoiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve, setVoicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve, setVoicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve, setVoicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve, setVoicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve, setVoicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve, setVoicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelve] = useState(false);
+  const [voiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen, setVoiceDurationsLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen] = useState(false);
+  const [voicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen, setVoicePlaybackProgressLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen] = useState(false);
+  const [voicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen, setVoicePlaybackTimeLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen] = useState(false);
+  const [voicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen, setVoicePlaybackStatusLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen] = useState(false);
+  const [voicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen, setVoicePlaybackIdLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen] = useState(false);
+  const [voicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen, setVoicePlayingStateLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen] = useState(false);
+  const [voicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen, setVoicePlaybackRefLoadedStateValueNewOneTwoThreeFourFiveSixSevenEightNineTenElevenTwelveThirteen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (selectionMoreMenuRef.current && !selectionMoreMenuRef.current.contains(event.target)) {
+        setShowSelectionMoreMenu(false);
+      }
+    };
+    if (showSelectionMoreMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [showSelectionMoreMenu]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleConversationUpdate = ({ conversationId, lastMessage }) => {
+      setChats((prevChats) => {
+        return prevChats.map((chat) => {
+          if (chat.id === conversationId) {
+            const currentUserId = typeof window !== "undefined" && localStorage.getItem("user") 
+              ? JSON.parse(localStorage.getItem("user")).id 
+              : "";
+            const isOutgoing = lastMessage.senderId === currentUserId;
+            const newUnread = isOutgoing ? chat.unread : chat.unread + 1;
+
+            return {
+              ...chat,
+              message: lastMessage.text || `Sent ${lastMessage.type}`,
+              time: new Date(lastMessage.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
+              unread: newUnread,
+              lastMessageStatus: isOutgoing ? lastMessage.status || "sent" : null,
+            };
+          }
+          return chat;
+        });
+      });
+    };
+
+    const handleMessagesRead = ({ conversationId, readBy }) => {
+      const currentUserId = typeof window !== "undefined" && localStorage.getItem("user") 
+        ? JSON.parse(localStorage.getItem("user")).id 
+        : "";
+      if (readBy === currentUserId) {
+        setChats((prevChats) =>
+          prevChats.map((chat) =>
+            chat.id === conversationId ? { ...chat, unread: 0 } : chat
+          )
+        );
+      }
+    };
+
+    socket.on("conversation_update", handleConversationUpdate);
+    socket.on("messages_read", handleMessagesRead);
+
+    return () => {
+      socket.off("conversation_update", handleConversationUpdate);
+      socket.off("messages_read", handleMessagesRead);
+    };
+  }, [socket]);
+
+  const handleToggleFavourite = (id) => {
+    setChats(prev => prev.map(chat => {
+      if (chat.id === id) {
+        const favIds = JSON.parse(localStorage.getItem("favouriteChatIds") || "[]");
+        if (!favIds.includes(id)) favIds.push(id);
+        localStorage.setItem("favouriteChatIds", JSON.stringify(favIds));
+        return { ...chat, isFavourite: true };
+      }
+      return chat;
+    }));
+  };
+
+  const handleRemoveFavourite = (id) => {
+    setChats(prev => prev.map(chat => {
+      if (chat.id === id) {
+        const favIds = JSON.parse(localStorage.getItem("favouriteChatIds") || "[]");
+        const index = favIds.indexOf(id);
+        if (index > -1) favIds.splice(index, 1);
+        localStorage.setItem("favouriteChatIds", JSON.stringify(favIds));
+        return { ...chat, isFavourite: false };
+      }
+      return chat;
+    }));
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+        setShowMoreMenu(false);
+      }
+    };
+    if (showMoreMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [showMoreMenu]);
   const [hasProcessedScan, setHasProcessedScan] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
@@ -336,6 +570,7 @@ export default function ChatsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMuteModal, setShowMuteModal] = useState(false);
   const [showLockIntroModal, setShowLockIntroModal] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   // Secret code verification/setup states
   const [currentUser, setCurrentUser] = useState(null);
@@ -512,13 +747,16 @@ export default function ChatsPage() {
             } catch (_) {}
           }
           const pinnedIds = JSON.parse(localStorage.getItem("pinnedChatIds") || "[]");
+          const favIds = JSON.parse(localStorage.getItem("favouriteChatIds") || "[]");
           const formattedChats = res.data.map((chat) => {
             const otherParticipant = chat.participants.find(p => p._id !== currentUserId) || {};
             const displayName = otherParticipant.displayName || otherParticipant.phoneNumber || "Unknown User";
             const isPinned = pinnedIds.includes(chat._id);
+            const isFavourite = favIds.includes(chat._id);
             return {
               id: chat._id,
               name: displayName,
+              otherParticipantId: otherParticipant._id || null,
               avatar: otherParticipant.avatarUrl || null,
               avatarText: displayName.charAt(0).toUpperCase(),
               avatarBg: "bg-teal-50 text-teal-600 font-bold border border-teal-100",
@@ -829,6 +1067,18 @@ export default function ChatsPage() {
     return chats.filter(c => c.isArchived).length;
   }, [chats]);
 
+  const unreadChatsCount = useMemo(() => {
+    return chats.reduce((sum, c) => sum + (c.unread || 0), 0);
+  }, [chats]);
+
+  const favouritesChatsCount = useMemo(() => {
+    return chats.filter(c => c.isFavourite).length;
+  }, [chats]);
+
+  const groupsChatsCount = useMemo(() => {
+    return chats.filter(c => c.isGroup).length;
+  }, [chats]);
+
   const allSelectedPinned = useMemo(() => {
     if (selectedChatIds.length === 0) return false;
     return selectedChatIds.every(id => chats.find(c => c.id === id)?.isPinned);
@@ -1060,6 +1310,46 @@ export default function ChatsPage() {
                 {allSelectedArchived ? "unarchive" : "archive"}
               </span>
             </button>
+
+            {/* Selection More Options Menu (Favourite toggle) */}
+            <div className="relative" ref={selectionMoreMenuRef}>
+              <button
+                onClick={() => setShowSelectionMoreMenu(!showSelectionMoreMenu)}
+                className="p-2.5 hover:bg-white/10 rounded-full active:scale-95 transition-all cursor-pointer"
+                title="More options"
+              >
+                <span className="material-symbols-outlined text-[22px]">more_vert</span>
+              </button>
+
+              {showSelectionMoreMenu && (
+                <div className="absolute right-0 top-9 w-[190px] bg-white rounded-[16px] shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 z-50 text-[#111b21] animate-in fade-in zoom-in-95 duration-100 origin-top-right border border-zinc-100">
+                  <button
+                    onClick={() => {
+                      selectedChatIds.forEach(id => handleToggleFavourite(id));
+                      exitSelectionMode();
+                      setShowSelectionMoreMenu(false);
+                      setToastMessage("Added to Favourites");
+                      setTimeout(() => setToastMessage(null), 2000);
+                    }}
+                    className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer"
+                  >
+                    Add to Favourites
+                  </button>
+                  <button
+                    onClick={() => {
+                      selectedChatIds.forEach(id => handleRemoveFavourite(id));
+                      exitSelectionMode();
+                      setShowSelectionMoreMenu(false);
+                      setToastMessage("Removed from Favourites");
+                      setTimeout(() => setToastMessage(null), 2000);
+                    }}
+                    className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer"
+                  >
+                    Remove Favourites
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
       ) : (
@@ -1084,7 +1374,7 @@ export default function ChatsPage() {
             </span>
           </button>
 
-          <div className="relative">
+          <div className="relative" ref={moreMenuRef}>
             <button
               onClick={() => setShowMoreMenu(!showMoreMenu)}
               aria-label="More options"
@@ -1095,10 +1385,6 @@ export default function ChatsPage() {
 
             {showMoreMenu && (
               <>
-                <div
-                  className="fixed inset-0 z-40 bg-transparent"
-                  onClick={() => setShowMoreMenu(false)}
-                />
                 <div className="absolute right-0 top-9 w-[205px] bg-white rounded-[16px] shadow-[0_4px_20px_rgba(0,0,0,0.15)] py-1.5 z-50 text-[#111b21] animate-in fade-in zoom-in-95 duration-100 origin-top-right border border-zinc-100">
                   <button
                     onClick={() => {
@@ -1208,24 +1494,39 @@ export default function ChatsPage() {
         </button>
         <button
           onClick={() => setActiveFilter("unread")}
-          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer flex items-center gap-1 ${activeFilter === "unread" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
+          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer flex items-center gap-1.5 ${activeFilter === "unread" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
             }`}
         >
-          Unread <span className="text-xs bg-[#e1e3e6] px-1 rounded-full text-zinc-600">99+</span>
+          <span>Unread</span>
+          {unreadChatsCount > 0 && (
+            <span className={`text-[10.5px] px-1.5 py-0.5 rounded-full font-bold leading-none ${activeFilter === "unread" ? "bg-[#0f8b5d] text-white" : "bg-[#dfe2e5] text-zinc-650"}`}>
+              {unreadChatsCount}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveFilter("favourites")}
-          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer ${activeFilter === "favourites" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
+          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer flex items-center gap-1.5 ${activeFilter === "favourites" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
             }`}
         >
-          Favourites
+          <span>Favourites</span>
+          {favouritesChatsCount > 0 && (
+            <span className={`text-[10.5px] px-1.5 py-0.5 rounded-full font-bold leading-none ${activeFilter === "favourites" ? "bg-[#0f8b5d] text-white" : "bg-[#dfe2e5] text-zinc-650"}`}>
+              {favouritesChatsCount}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveFilter("groups")}
-          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer flex items-center gap-1 ${activeFilter === "groups" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
+          className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer flex items-center gap-1.5 ${activeFilter === "groups" ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
             }`}
         >
-          Groups <span className="text-xs bg-[#e1e3e6] px-1 rounded-full text-zinc-600">95</span>
+          <span>Groups</span>
+          {groupsChatsCount > 0 && (
+            <span className={`text-[10.5px] px-1.5 py-0.5 rounded-full font-bold leading-none ${activeFilter === "groups" ? "bg-[#0f8b5d] text-white" : "bg-[#dfe2e5] text-zinc-650"}`}>
+              {groupsChatsCount}
+            </span>
+          )}
         </button>
         <button className="w-8 h-8 flex items-center justify-center bg-[#f0f2f5] text-[#54656f] rounded-full shrink-0 active:scale-95 cursor-pointer">
           <span className="material-symbols-outlined text-[18px]">add</span>
@@ -1592,44 +1893,93 @@ export default function ChatsPage() {
         </div>
       )}
 
-      {/* Lock Chat Onboarding / Intro Modal Overlay */}
-      {showLockIntroModal && (
-        <div className="absolute inset-0 z-[150] bg-black/60 flex items-center justify-center p-4 transition-all duration-200" onClick={() => setShowLockIntroModal(false)}>
+      {/* Chat Limit Modal Overlay */}
+      {showLimitModal && (
+        <div className="absolute inset-0 z-[150] bg-black/60 flex items-center justify-center p-4 transition-all duration-200" onClick={() => setShowLimitModal(false)}>
           <div 
-            className="w-full max-w-[340px] bg-[#111b21] rounded-[24px] overflow-hidden text-white shadow-2xl flex flex-col font-sans select-none animate-in fade-in zoom-in-95 duration-150 p-6 text-center relative"
+            className="w-full max-w-[340px] bg-white dark:bg-[#111b21] rounded-[24px] overflow-hidden text-[#111b21] dark:text-white shadow-2xl flex flex-col font-sans select-none animate-in fade-in zoom-in-95 duration-150 p-6 text-center relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
             <button 
-              onClick={() => setShowLockIntroModal(false)}
-              className="absolute right-4 top-4 text-zinc-400 hover:text-white transition-colors p-1"
+              onClick={() => setShowLimitModal(false)}
+              className="absolute right-4 top-4 text-zinc-400 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white transition-colors p-1"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
 
             {/* Circular Illustration */}
-            <div className="w-[120px] h-[120px] bg-[#1d2a30] rounded-full flex items-center justify-center relative mx-auto mt-4 mb-6">
+            <div className="w-[120px] h-[120px] bg-zinc-100 dark:bg-[#1d2a30] rounded-full flex items-center justify-center relative mx-auto mt-4 mb-6">
               {/* Phone Mockup */}
-              <div className="w-[45px] h-[75px] bg-[#2a3942] border border-zinc-600 rounded-lg p-1.5 flex flex-col gap-1.5 justify-start">
+              <div className="w-[45px] h-[75px] bg-white dark:bg-[#2a3942] border border-zinc-200 dark:border-zinc-600 rounded-lg p-1.5 flex flex-col gap-1.5 justify-start">
                 <div className="w-full h-1.5 bg-[#00a884]/40 rounded-full"></div>
                 <div className="w-[85%] h-1 bg-[#00a884] rounded-full"></div>
-                <div className="w-[70%] h-1 bg-zinc-500 rounded-full"></div>
+                <div className="w-[70%] h-1 bg-zinc-400 dark:bg-zinc-500 rounded-full"></div>
+                <div className="w-full h-1.5 bg-[#00a884]/40 rounded-full"></div>
+                <div className="w-[85%] h-1 bg-[#00a884] rounded-full"></div>
+              </div>
+              {/* Star Badge */}
+              <div className="absolute -bottom-1 -right-1 w-[38px] h-[38px] bg-[#00a884] border-2 border-white dark:border-[#1d2a30] rounded-full flex items-center justify-center shadow-lg">
+                <span className="material-symbols-outlined text-white text-[18px]">workspace_premium</span>
+              </div>
+            </div>
+
+            {/* Description */}
+            <p className="text-[13px] text-[#667781] dark:text-[#8696a0] mt-1 mb-6 leading-relaxed px-1">
+              You have reached the limit of 3 active chats. Please upgrade your account to unlock unlimited conversations.
+            </p>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setShowLimitModal(false)}
+                className="w-full py-3 bg-[#00a884] hover:bg-[#008f70] active:scale-[0.98] transition-all rounded-full text-[14.5px] font-bold text-white cursor-pointer"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lock Chat Onboarding / Intro Modal Overlay */}
+      {showLockIntroModal && (
+        <div className="absolute inset-0 z-[150] bg-black/60 flex items-center justify-center p-4 transition-all duration-200" onClick={() => setShowLockIntroModal(false)}>
+          <div 
+            className="w-full max-w-[340px] bg-white dark:bg-[#111b21] rounded-[24px] overflow-hidden text-[#111b21] dark:text-white shadow-2xl flex flex-col font-sans select-none animate-in fade-in zoom-in-95 duration-150 p-6 text-center relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button 
+              onClick={() => setShowLockIntroModal(false)}
+              className="absolute right-4 top-4 text-zinc-400 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white transition-colors p-1"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+
+            {/* Circular Illustration */}
+            <div className="w-[120px] h-[120px] bg-zinc-100 dark:bg-[#1d2a30] rounded-full flex items-center justify-center relative mx-auto mt-4 mb-6">
+              {/* Phone Mockup */}
+              <div className="w-[45px] h-[75px] bg-white dark:bg-[#2a3942] border border-zinc-200 dark:border-zinc-600 rounded-lg p-1.5 flex flex-col gap-1.5 justify-start">
+                <div className="w-full h-1.5 bg-[#00a884]/40 rounded-full"></div>
+                <div className="w-[85%] h-1 bg-[#00a884] rounded-full"></div>
+                <div className="w-[70%] h-1 bg-zinc-400 dark:bg-zinc-500 rounded-full"></div>
                 <div className="w-full h-1.5 bg-[#00a884]/40 rounded-full"></div>
                 <div className="w-[85%] h-1 bg-[#00a884] rounded-full"></div>
               </div>
               {/* Lock Badge */}
-              <div className="absolute -bottom-1 -right-1 w-[38px] h-[38px] bg-[#00a884] border-2 border-[#1d2a30] rounded-full flex items-center justify-center shadow-lg">
+              <div className="absolute -bottom-1 -right-1 w-[38px] h-[38px] bg-[#00a884] border-2 border-white dark:border-[#1d2a30] rounded-full flex items-center justify-center shadow-lg">
                 <span className="material-symbols-outlined text-white text-[18px]">lock</span>
               </div>
             </div>
 
             {/* Title */}
-            <h3 className="text-[18px] font-bold text-white tracking-wide">
+            <h3 className="text-[18px] font-bold text-[#111b21] dark:text-white tracking-wide">
               Keep this chat locked and hidden
             </h3>
             
             {/* Description */}
-            <p className="text-[13px] text-[#8696a0] mt-3 mb-6 leading-relaxed px-1">
+            <p className="text-[13px] text-[#667781] dark:text-[#8696a0] mt-3 mb-6 leading-relaxed px-1">
               Use your secret code to open this chat and read notifications on this device. For even more privacy, locked chats will be kept separate from other chats. <a href="#" className="text-[#00a884] hover:underline font-semibold" onClick={(e) => e.preventDefault()}>Learn more</a>
             </p>
 

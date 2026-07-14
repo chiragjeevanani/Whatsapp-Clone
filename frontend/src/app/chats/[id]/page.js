@@ -241,6 +241,8 @@ export default function ChatConversationPage({ params: paramsPromise }) {
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [showCamera, setShowCamera] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState("user");
+  const [lightboxImage, setLightboxImage] = useState(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const canvasRef = useRef(null);
@@ -265,7 +267,48 @@ export default function ChatConversationPage({ params: paramsPromise }) {
   const [isVoicePlaying, setIsVoicePlaying] = useState(false);
   const [voicePlaybackProgress, setVoicePlaybackProgress] = useState(0);
   const [voicePlaybackTime, setVoicePlaybackTime] = useState(0);
+  const [voiceDurations, setVoiceDurations] = useState({});
   const audioPlaybackRef = useRef(null);
+
+  // Load voice message metadata durations dynamically if missing
+  useEffect(() => {
+    messages.forEach((msg) => {
+      if (msg.isVoiceMessage && (!msg.voiceDuration || msg.voiceDuration === "0:00") && msg.audioUrl) {
+        if (!voiceDurations[msg.id]) {
+          const audio = new Audio(msg.audioUrl);
+          audio.addEventListener("loadedmetadata", () => {
+            if (audio.duration && !isNaN(audio.duration) && audio.duration !== Infinity) {
+              const durationStr = formatVoiceDuration(audio.duration);
+              setVoiceDurations((prev) => ({ ...prev, [msg.id]: durationStr }));
+            }
+          });
+        }
+      }
+    });
+  }, [messages, voiceDurations]);
+
+  const handleVoiceSeek = (e, msgId) => {
+    if (playingVoiceId !== msgId || !audioPlaybackRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const width = rect.width;
+    const newProgress = Math.max(0, Math.min(1, clickX / width));
+    const newTime = newProgress * audioPlaybackRef.current.duration;
+    audioPlaybackRef.current.currentTime = newTime;
+    setVoicePlaybackProgress(newProgress);
+    setVoicePlaybackTime(newTime);
+  };
+
+  const handleVoiceJump = (seconds) => {
+    if (audioPlaybackRef.current) {
+      let newTime = audioPlaybackRef.current.currentTime + seconds;
+      if (newTime < 0) newTime = 0;
+      if (newTime > audioPlaybackRef.current.duration) newTime = audioPlaybackRef.current.duration;
+      audioPlaybackRef.current.currentTime = newTime;
+      setVoicePlaybackTime(newTime);
+      setVoicePlaybackProgress(newTime / audioPlaybackRef.current.duration);
+    }
+  };
 
   const startRecording = async () => {
     try {
@@ -574,6 +617,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
     setEditingMessage(null);
     setEditInputText("");
     setSelectedMessageIds([]);
+    messageInputRef.current?.focus();
 
     try {
       if (socket) {
@@ -927,18 +971,21 @@ export default function ChatConversationPage({ params: paramsPromise }) {
 
     const handleMessageUpdated = (updatedMessage) => {
       console.log("WebSocket: Received message_updated event:", updatedMessage);
+      const msgData = updatedMessage?.data || updatedMessage;
+      if (!msgData) return;
+      const targetId = msgData._id || msgData.id;
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === updatedMessage._id
+          msg.id === targetId
             ? {
                 ...msg,
-                text: updatedMessage.deletedForEveryone ? "" : updatedMessage.text,
-                edited: updatedMessage.edited,
-                deletedForEveryone: updatedMessage.deletedForEveryone,
-                image: updatedMessage.deletedForEveryone ? null : msg.image,
-                isDocumentCard: updatedMessage.deletedForEveryone ? false : msg.isDocumentCard,
-                isContactCard: updatedMessage.deletedForEveryone ? false : msg.isContactCard,
-                isPollCard: updatedMessage.deletedForEveryone ? false : msg.isPollCard,
+                text: msgData.deletedForEveryone ? "" : msgData.text,
+                edited: msgData.edited,
+                deletedForEveryone: msgData.deletedForEveryone,
+                image: msgData.deletedForEveryone ? null : msg.image,
+                isDocumentCard: msgData.deletedForEveryone ? false : msg.isDocumentCard,
+                isContactCard: msgData.deletedForEveryone ? false : msg.isContactCard,
+                isPollCard: msgData.deletedForEveryone ? false : msg.isPollCard,
               }
             : msg
         )
@@ -952,14 +999,17 @@ export default function ChatConversationPage({ params: paramsPromise }) {
 
     const handleMessageEdited = (updatedMessage) => {
       console.log("WebSocket: Received message_edited event:", updatedMessage);
+      const msgData = updatedMessage?.data || updatedMessage;
+      if (!msgData) return;
+      const targetId = msgData._id || msgData.id;
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === updatedMessage._id
+          msg.id === targetId
             ? {
                 ...msg,
-                text: updatedMessage.text,
-                edited: updatedMessage.edited,
-                editedAt: updatedMessage.editedAt,
+                text: msgData.text,
+                edited: msgData.edited,
+                editedAt: msgData.editedAt,
               }
             : msg
         )
@@ -1079,7 +1129,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
 
   useEffect(() => {
     if (showCamera) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: cameraFacingMode } })
         .then((stream) => {
           streamRef.current = stream;
           if (videoRef.current) {
@@ -1102,7 +1152,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [showCamera]);
+  }, [showCamera, cameraFacingMode]);
 
   const [inputText, setInputText] = useState("");
   const [editingMessage, setEditingMessage] = useState(null);
@@ -1316,7 +1366,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
 
   const handleRetakePhoto = () => {
     setCapturedPhoto(null);
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: cameraFacingMode } })
       .then((stream) => {
         streamRef.current = stream;
         if (videoRef.current) {
@@ -1328,6 +1378,14 @@ export default function ChatConversationPage({ params: paramsPromise }) {
         showToast("Failed to access camera");
         setShowCamera(false);
       });
+  };
+
+  const handleFlipCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setCameraFacingMode((prev) => (prev === "user" ? "environment" : "user"));
   };
 
   const handleSendCapturedPhoto = () => {
@@ -1442,6 +1500,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
     if (socket && id) {
       socket.emit("stop_typing", { conversationId: id });
     }
+    messageInputRef.current?.focus();
 
     const tempId = `temp_${Date.now()}`;
     const optimisticMessage = {
@@ -1892,17 +1951,26 @@ export default function ChatConversationPage({ params: paramsPromise }) {
                       </div>
                     )}
 
-                    {/* Image attachment */}
                     {msg.image && !msg.deletedForEveryone && (
                       <div className="relative rounded-[8px] overflow-hidden mb-1.5 border border-zinc-100 max-w-[280px]">
                         {isOutgoing ? (
-                          <img className="w-full h-auto object-cover max-h-[180px]" src={msg.image} alt="Attached image" />
+                          <img 
+                            className="w-full h-auto object-cover max-h-[180px] cursor-pointer hover:brightness-95 transition-all" 
+                            src={msg.image} 
+                            alt="Attached image" 
+                            onClick={() => setLightboxImage(msg.image)}
+                          />
                         ) : (
                           <>
-                            <img className="w-full h-auto object-cover max-h-[180px] filter blur-[1.5px] brightness-90" src={msg.image} alt="Attached image" />
+                            <img 
+                              className="w-full h-auto object-cover max-h-[180px] filter blur-[1.5px] brightness-90 cursor-pointer hover:brightness-95 transition-all" 
+                              src={msg.image} 
+                              alt="Attached image" 
+                              onClick={() => setLightboxImage(msg.image)}
+                            />
                             {/* Download size overlay */}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <button className="bg-black/55 text-white text-[12px] font-semibold px-3 py-2 rounded-full flex items-center gap-1.5 hover:bg-black/75 transition-all">
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <button className="bg-black/55 text-white text-[12px] font-semibold px-3 py-2 rounded-full flex items-center gap-1.5 hover:bg-black/75 transition-all pointer-events-auto">
                                 <span className="material-symbols-outlined text-[17px] font-bold">download</span>
                                 <span>{msg.imageSize}</span>
                               </button>
@@ -1915,29 +1983,60 @@ export default function ChatConversationPage({ params: paramsPromise }) {
 
                     {/* Voice Message attachment */}
                     {msg.isVoiceMessage && !msg.deletedForEveryone && (
-                      <div className="flex items-center gap-3 py-1.5 px-0.5 select-none min-w-[240px] font-sans">
-                        {/* Play/Pause Button */}
-                        <button
-                          type="button"
-                          onClick={() => togglePlayVoiceMessage(msg.id, msg.audioUrl)}
-                          className="w-10 h-10 rounded-full bg-zinc-200/50 hover:bg-zinc-200/80 active:bg-zinc-300/80 flex items-center justify-center shrink-0 active:scale-90 transition-all text-[#111b21] cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[24px] fill text-[#54656f]">
-                            {playingVoiceId === msg.id && isVoicePlaying ? "pause" : "play_arrow"}
-                          </span>
-                        </button>
+                      <div className="flex items-center gap-2 py-1.5 px-0.5 select-none min-w-[260px] font-sans">
+                        {/* Audio Controls (Play, Jump Back, Jump Forward) */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {/* Jump Back 5s */}
+                          {playingVoiceId === msg.id && (
+                            <button
+                              type="button"
+                              onClick={() => handleVoiceJump(-5)}
+                              className="w-7 h-7 rounded-full bg-zinc-200/50 hover:bg-zinc-200 flex items-center justify-center text-[#54656f] active:scale-90 transition-all cursor-pointer"
+                              title="Go back 5s"
+                            >
+                              <span className="material-symbols-outlined text-[17px] font-bold">replay_5</span>
+                            </button>
+                          )}
+
+                          {/* Play/Pause Button */}
+                          <button
+                            type="button"
+                            onClick={() => togglePlayVoiceMessage(msg.id, msg.audioUrl)}
+                            className="w-10 h-10 rounded-full bg-zinc-200/50 hover:bg-zinc-200/80 active:bg-zinc-300/80 flex items-center justify-center shrink-0 active:scale-90 transition-all text-[#111b21] cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[24px] fill text-[#54656f]">
+                              {playingVoiceId === msg.id && isVoicePlaying ? "pause" : "play_arrow"}
+                            </span>
+                          </button>
+
+                          {/* Jump Forward 5s */}
+                          {playingVoiceId === msg.id && (
+                            <button
+                              type="button"
+                              onClick={() => handleVoiceJump(5)}
+                              className="w-7 h-7 rounded-full bg-zinc-200/50 hover:bg-zinc-200 flex items-center justify-center text-[#54656f] active:scale-90 transition-all cursor-pointer"
+                              title="Forward 5s"
+                            >
+                              <span className="material-symbols-outlined text-[17px] font-bold">forward_5</span>
+                            </button>
+                          )}
+                        </div>
 
                         {/* Waveform/Seekbar container */}
                         <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
-                          {/* Mock Waveform indicator */}
-                          <div className="flex items-end gap-[2px] h-[22px] px-1 select-none">
+                          {/* Seekable Waveform indicator */}
+                          <div 
+                            onClick={(e) => handleVoiceSeek(e, msg.id)}
+                            className="flex items-end gap-[2px] h-[22px] px-1 select-none cursor-pointer hover:bg-zinc-100/10 rounded transition-all"
+                            title="Click to seek"
+                          >
                             {[10, 16, 8, 12, 20, 14, 8, 12, 16, 12, 20, 14, 8, 12, 16, 10, 6, 12, 14, 18, 10, 14, 8, 12, 6].map((h, i) => (
                               <div
                                 key={i}
-                                className="w-[3px] rounded-full transition-all duration-150"
+                                className="w-[3px] rounded-full transition-all duration-150 pointer-events-none"
                                 style={{
                                   height: `${h}px`,
-                                  backgroundColor: playingVoiceId === msg.id && isVoicePlaying && (voicePlaybackProgress > (i / 25))
+                                  backgroundColor: playingVoiceId === msg.id && (voicePlaybackProgress > (i / 25))
                                     ? "#00a884"
                                     : "#b1b9be"
                                 }}
@@ -1948,7 +2047,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
                           {/* Time / Status indicators */}
                           <div className="flex justify-between items-center text-[10.5px] text-[#667781] px-1 leading-none font-medium">
                             <span>
-                              {playingVoiceId === msg.id ? formatVoiceDuration(voicePlaybackTime) : msg.voiceDuration || "0:00"}
+                              {playingVoiceId === msg.id ? formatVoiceDuration(voicePlaybackTime) : (voiceDurations[msg.id] || msg.voiceDuration || "0:00")}
                             </span>
                             <span className="material-symbols-outlined text-[15px] text-[#00a884] fill">mic</span>
                           </div>
@@ -2343,6 +2442,11 @@ export default function ChatConversationPage({ params: paramsPromise }) {
               <button
                 type={(editingMessage ? editInputText.trim() : inputText.trim()) ? "submit" : "button"}
                 onClick={(editingMessage ? editInputText.trim() : inputText.trim()) ? undefined : startRecording}
+                onMouseDown={(e) => {
+                  if (editingMessage ? editInputText.trim() : inputText.trim()) {
+                    e.preventDefault();
+                  }
+                }}
                 className="w-[44px] h-[44px] bg-[#00a884] hover:bg-[#008f70] text-white rounded-full flex items-center justify-center shrink-0 shadow-md active:scale-95 transition-transform cursor-pointer"
               >
                 {(editingMessage ? editInputText.trim() : inputText.trim()) ? (
@@ -3675,13 +3779,24 @@ export default function ChatConversationPage({ params: paramsPromise }) {
                 <span className="material-symbols-outlined text-[26px] transform rotate-[-30deg] pl-0.5">send</span>
               </button>
             ) : (
-              <button 
-                type="button"
-                onClick={handleCapturePhoto}
-                className="w-[72px] h-[72px] rounded-full border-4 border-white p-1 flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              >
-                <div className="w-full h-full bg-white rounded-full"></div>
-              </button>
+              <div className="flex items-center justify-between w-full max-w-[280px]">
+                <div className="w-[44px]"></div>
+                <button 
+                  type="button"
+                  onClick={handleCapturePhoto}
+                  className="w-[72px] h-[72px] rounded-full border-4 border-white p-1 flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer animate-in fade-in"
+                >
+                  <div className="w-full h-full bg-white rounded-full"></div>
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleFlipCamera}
+                  className="w-[44px] h-[44px] rounded-full bg-white/15 hover:bg-white/25 active:scale-90 transition-all flex items-center justify-center text-white cursor-pointer"
+                  title="Flip camera"
+                >
+                  <span className="material-symbols-outlined text-[23px]">flip_camera_android</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -3812,6 +3927,31 @@ export default function ChatConversationPage({ params: paramsPromise }) {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Full-screen Lightbox Image Viewer */}
+      {lightboxImage && (
+        <div 
+          className="fixed inset-0 bg-black/95 z-[9999] flex flex-col items-center justify-center p-4 select-none animate-in fade-in duration-200"
+          onClick={() => setLightboxImage(null)}
+        >
+          {/* Close button */}
+          <button 
+            type="button"
+            className="absolute top-4 right-4 text-white p-2 hover:bg-white/10 rounded-full transition-all active:scale-95 cursor-pointer"
+            onClick={() => setLightboxImage(null)}
+          >
+            <span className="material-symbols-outlined text-[28px]">close</span>
+          </button>
+          
+          {/* Full Image */}
+          <img 
+            src={lightboxImage} 
+            alt="Full screen preview" 
+            className="max-w-full max-h-[85vh] object-contain rounded shadow-2xl animate-in zoom-in-95 duration-200" 
+            onClick={(e) => e.stopPropagation()} 
+          />
         </div>
       )}
     </div>

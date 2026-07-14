@@ -102,6 +102,18 @@ app.use(
 );
 
 app.use(
+  "/uploads/avatars",
+  createProxyMiddleware({
+    target: config.services.user,
+    changeOrigin: true,
+    pathRewrite: {
+      "^/": "/uploads/avatars/"
+    },
+    on: { proxyReq },
+  })
+);
+
+app.use(
   "/uploads",
   createProxyMiddleware({
     target: config.services.upload,

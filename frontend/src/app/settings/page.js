@@ -56,6 +56,34 @@ export default function SettingsPage() {
   const [emailError, setEmailError] = useState("");
 
   const fileInputRef = useRef(null);
+  const qrVideoRef = useRef(null);
+  const qrStreamRef = useRef(null);
+
+  useEffect(() => {
+    if (subPage === "qr" && qrTab === "scan_code") {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then((stream) => {
+          qrStreamRef.current = stream;
+          if (qrVideoRef.current) {
+            qrVideoRef.current.srcObject = stream;
+            qrVideoRef.current.play().catch(() => {});
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to access camera for QR scanner:", err);
+        });
+    } else {
+      if (qrStreamRef.current) {
+        qrStreamRef.current.getTracks().forEach((track) => track.stop());
+        qrStreamRef.current = null;
+      }
+    }
+    return () => {
+      if (qrStreamRef.current) {
+        qrStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [subPage, qrTab]);
 
   const getAvatarUrl = (path) => {
     if (!path) return null;
@@ -355,8 +383,16 @@ export default function SettingsPage() {
             /* SCAN CODE VIEW */
             <div className="w-full flex flex-col items-center animate-in fade-in duration-200 gap-6">
 
-              {/* Simulated Camera Scanner box */}
+              {/* Camera Scanner box */}
               <div className="w-full aspect-square max-w-[280px] bg-black rounded-3xl relative overflow-hidden border-4 border-zinc-200 dark:border-zinc-800 shadow-lg flex flex-col items-center justify-center">
+                {/* Active camera stream video */}
+                <video 
+                  ref={qrVideoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
 
                 {/* Scanner Target Guide box */}
                 <div className="w-[180px] h-[180px] border-2 border-white/60 rounded-2xl relative z-10 flex flex-col items-center justify-center">

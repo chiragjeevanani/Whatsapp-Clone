@@ -1,17 +1,79 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useTransform, useMotionValue } from "framer-motion";
+import { useSocket } from "@/contexts/SocketContext";
+import { getConversations } from "@/services/chat/conversations";
 
 const NAVIGATION_TABS = [
-  { id: "chats", label: "Chats", icon: "chat", path: "/chats", badge: "99+" },
+  { id: "chats", label: "Chats", icon: "chat", path: "/chats", badge: 0 },
   { id: "updates", label: "Updates", icon: "donut_large", path: "/updates", hasDot: true },
   { id: "communities", label: "Communities", icon: "groups", path: "/communities" },
   { id: "calls", label: "Calls", icon: "call", path: "/calls" },
 ];
 
 function Navigation({ activeTab, dragX, width, onTabChange }) {
+  const { socket } = useSocket();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await getConversations();
+        if (res && res.success && res.data) {
+          const totalUnread = res.data.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
+          setUnreadCount(totalUnread);
+        }
+      } catch (err) {
+        console.error("Failed to fetch unread count for navigation:", err);
+      }
+    };
+    
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (token) {
+      fetchUnreadCount();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleConversationUpdate = ({ conversationId, lastMessage }) => {
+      const currentUserId = typeof window !== "undefined" && localStorage.getItem("user") 
+        ? JSON.parse(localStorage.getItem("user")).id 
+        : "";
+      if (lastMessage.senderId !== currentUserId) {
+        setUnreadCount(prev => prev + 1);
+      }
+    };
+
+    const handleMessagesRead = ({ conversationId, readBy }) => {
+      const currentUserId = typeof window !== "undefined" && localStorage.getItem("user") 
+        ? JSON.parse(localStorage.getItem("user")).id 
+        : "";
+      if (readBy === currentUserId) {
+        const fetchUnreadCount = async () => {
+          try {
+            const res = await getConversations();
+            if (res && res.success && res.data) {
+              const totalUnread = res.data.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
+              setUnreadCount(totalUnread);
+            }
+          } catch (_) {}
+        };
+        fetchUnreadCount();
+      }
+    };
+
+    socket.on("conversation_update", handleConversationUpdate);
+    socket.on("messages_read", handleMessagesRead);
+
+    return () => {
+      socket.off("conversation_update", handleConversationUpdate);
+      socket.off("messages_read", handleMessagesRead);
+    };
+  }, [socket]);
   const router = useRouter();
   const fallbackDragX = useMotionValue(0);
   const resolvedDragX = dragX || fallbackDragX;
@@ -85,11 +147,14 @@ function Navigation({ activeTab, dragX, width, onTabChange }) {
                 </motion.div>
 
                 {/* Badge Overlay */}
-                {tab.badge && (
-                  <span className="absolute -top-1.5 -right-2.5 bg-[#00a884] dark:bg-[#ff2d55] text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white dark:border-[#111b21] min-w-[18px] text-center leading-none">
-                    {tab.badge}
-                  </span>
-                )}
+                {(() => {
+                  const badgeValue = tab.id === "chats" ? unreadCount : tab.badge;
+                  return badgeValue && badgeValue > 0 ? (
+                    <span className="absolute -top-1.5 -right-2.5 bg-[#00a884] dark:bg-[#ff2d55] text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white dark:border-[#111b21] min-w-[18px] text-center leading-none">
+                      {badgeValue}
+                    </span>
+                  ) : null;
+                })()}
 
                 {/* Green Dot Indicator */}
                 {tab.hasDot && (
