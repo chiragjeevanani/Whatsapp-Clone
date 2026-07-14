@@ -640,12 +640,16 @@ export default function ChatsPage() {
           getConversations().then((res) => {
             if (res && res.success && res.data) {
               const formattedChats = res.data.map((chat) => {
-                const otherParticipant = chat.participants.find(p => p._id !== currentUserId) || {};
-                const displayName = otherParticipant.displayName || otherParticipant.phoneNumber || "Unknown User";
+                let otherParticipant = chat.participants.find(p => p._id !== currentUserId);
+                if (!otherParticipant && chat.participants.length > 0) {
+                  otherParticipant = chat.participants[0];
+                }
+                const isSelf = otherParticipant?._id === currentUserId;
+                const displayName = isSelf ? "You" : (otherParticipant?.displayName || otherParticipant?.phoneNumber || "Unknown User");
                 return {
                   id: chat._id,
                   name: displayName,
-                  avatar: otherParticipant.avatarUrl || null,
+                  avatar: otherParticipant?.avatarUrl || null,
                   avatarText: displayName.charAt(0).toUpperCase(),
                   avatarBg: "bg-teal-50 text-teal-600 font-bold border border-teal-100",
                   time: chat.lastMessage && chat.lastMessage.timestamp 
@@ -749,15 +753,19 @@ export default function ChatsPage() {
           const pinnedIds = JSON.parse(localStorage.getItem("pinnedChatIds") || "[]");
           const favIds = JSON.parse(localStorage.getItem("favouriteChatIds") || "[]");
           const formattedChats = res.data.map((chat) => {
-            const otherParticipant = chat.participants.find(p => p._id !== currentUserId) || {};
-            const displayName = otherParticipant.displayName || otherParticipant.phoneNumber || "Unknown User";
+            let otherParticipant = chat.participants.find(p => p._id !== currentUserId);
+            if (!otherParticipant && chat.participants.length > 0) {
+              otherParticipant = chat.participants[0];
+            }
+            const isSelf = otherParticipant?._id === currentUserId;
+            const displayName = isSelf ? "You" : (otherParticipant?.displayName || otherParticipant?.phoneNumber || "Unknown User");
             const isPinned = pinnedIds.includes(chat._id);
             const isFavourite = favIds.includes(chat._id);
             return {
               id: chat._id,
               name: displayName,
-              otherParticipantId: otherParticipant._id || null,
-              avatar: otherParticipant.avatarUrl || null,
+              otherParticipantId: otherParticipant?._id || null,
+              avatar: otherParticipant?.avatarUrl || null,
               avatarText: displayName.charAt(0).toUpperCase(),
               avatarBg: "bg-teal-50 text-teal-600 font-bold border border-teal-100",
               time: chat.lastMessage && chat.lastMessage.timestamp 
@@ -1129,6 +1137,14 @@ export default function ChatsPage() {
 
   // 1. SELECT CONTACT OVERLAY VIEW (NEW CHAT FAB)
   if (showSelectContact) {
+    const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    let currentUser = null;
+    if (storedUser) {
+      try {
+        currentUser = JSON.parse(storedUser);
+      } catch (_) {}
+    }
+
     return (
       <div className="w-full bg-white text-[#1c2e35] antialiased min-h-screen flex flex-col font-sans select-none relative">
         {/* Header */}
@@ -1210,6 +1226,22 @@ export default function ChatsPage() {
             </div>
             <span className="text-[15.5px] font-bold text-[#1c2e35]">New community</span>
           </div>
+
+          {/* Option: Message yourself */}
+          {currentUser && (
+            <div
+              onClick={() => handleContactClick(currentUser.id)}
+              className="flex items-center gap-3.5 py-3 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
+            >
+              <div className="w-[48px] h-[48px] rounded-full flex items-center justify-center shrink-0 bg-[#e6f5ef] text-[#0f8b5d] border border-teal-100 font-bold">
+                <span className="material-symbols-outlined text-[22px] fill">person</span>
+              </div>
+              <div className="flex-grow min-w-0 border-b border-zinc-100 pb-3 flex flex-col justify-center">
+                <span className="text-[15.5px] font-bold text-[#1c2e35] truncate leading-snug">Message yourself</span>
+                <span className="text-[12.5px] text-[#667781] truncate mt-0.5">You</span>
+              </div>
+            </div>
+          )}
 
           {/* Section: Contacts on AppMetaChat */}
           <div className="text-[13.5px] font-bold text-[#667781] pt-4 pb-2">
