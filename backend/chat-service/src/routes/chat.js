@@ -20,5 +20,7 @@ router.delete("/:id", chatController.softDeleteConversation);
 router.patch("/:id/archive", chatController.archiveConversation);
 router.patch("/:id/mute", chatController.muteConversation);
 router.patch("/:id/lock", chatController.lockConversation);
+router.patch("/:id/favourite", chatController.favouriteConversation);
+router.put("/:id/clear", chatController.clearConversation);
 
 module.exports = router;

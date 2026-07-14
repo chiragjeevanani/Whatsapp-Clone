@@ -191,6 +191,24 @@ class ChatRepository {
       { new: true }
     );
   }
+
+  async setFavourite(conversationId, userId, favourite) {
+    const update = {};
+    update[`favourites.${userId}`] = favourite;
+    return Conversation.findByIdAndUpdate(
+      conversationId,
+      { $set: update },
+      { new: true }
+    );
+  }
+
+  async clearConversation(conversationId, userId) {
+    const Message = require("../models/message");
+    return Message.updateMany(
+      { conversationId },
+      { $addToSet: { deletedForMe: userId } }
+    );
+  }
 }
 
 module.exports = new ChatRepository();

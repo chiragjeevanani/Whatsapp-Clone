@@ -204,6 +204,10 @@ class UserService {
     return { success: true };
   }
 
+  async isBlocked(userId, targetUserId) {
+    return userRepository.isBlocked(userId, targetUserId);
+  }
+
   async updateFcmToken(userId, token, platform = "web") {
     if (!token || typeof token !== "string" || token.trim() === "") {
       throw new AppError("Invalid FCM token", 400);

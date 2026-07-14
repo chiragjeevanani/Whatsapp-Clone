@@ -230,6 +230,20 @@ class ChatService {
     return { conversationId, archived: archive };
   }
 
+  async favouriteConversation(conversationId, userId, favourite = true) {
+    const conversation = await chatRepository.findConversationById(conversationId);
+    if (!conversation) {
+      throw new AppError("Conversation not found", 404);
+    }
+    const isParticipant = conversation.participants.some(p => p._id.toString() === userId.toString());
+    if (!isParticipant) {
+      throw new AppError("Access denied", 403);
+    }
+    await chatRepository.setFavourite(conversationId, userId, favourite);
+    logger.info(`Conversation ${conversationId} favourite state set to ${favourite} for user ${userId}`);
+    return { conversationId, favourite };
+  }
+
   async muteConversation(conversationId, userId, enabled, duration = null) {
     const conversation = await chatRepository.findConversationById(conversationId);
     if (!conversation) {
@@ -265,6 +279,20 @@ class ChatService {
     await chatRepository.setLocked(conversationId, userId, locked);
     logger.info(`Conversation ${conversationId} ${locked ? "locked" : "unlocked"} for user ${userId}`);
     return { conversationId, locked };
+  }
+
+  async clearConversation(conversationId, userId) {
+    const conversation = await chatRepository.findConversationById(conversationId);
+    if (!conversation) {
+      throw new AppError("Conversation not found", 404);
+    }
+    const isParticipant = conversation.participants.some(p => p._id.toString() === userId.toString());
+    if (!isParticipant) {
+      throw new AppError("Access denied", 403);
+    }
+    await chatRepository.clearConversation(conversationId, userId);
+    logger.info(`Conversation ${conversationId} cleared messages for user ${userId}`);
+    return { conversationId };
   }
 }
 

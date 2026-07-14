@@ -17,8 +17,11 @@ const updateMe = asyncHandler(async (req, res) => {
 });
 
 const getUserById = asyncHandler(async (req, res) => {
-  const userId = req.params.id;
-  const profile = await userService.getProfile(userId);
+  const targetUserId = req.params.id;
+  const currentUserId = req.user.userId;
+  const profile = await userService.getProfile(targetUserId);
+  const isBlocked = await userService.isBlocked(currentUserId, targetUserId);
+  profile.isBlocked = isBlocked;
   sendResponse(res, 200, profile, "User profile fetched successfully");
 });
 

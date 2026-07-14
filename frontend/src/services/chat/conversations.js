@@ -11,3 +11,11 @@ export async function createConversation(targetUserId) {
 export async function getConversationDetails(conversationId) {
   return apiClient.get(`/chats/${conversationId}`);
 }
+
+export async function favouriteConversation(conversationId, favourite = true) {
+  return apiClient.patch(`/chats/${conversationId}/favourite`, { favourite });
+}
+
+export async function clearConversation(conversationId) {
+  return apiClient.put(`/chats/${conversationId}/clear`);
+}

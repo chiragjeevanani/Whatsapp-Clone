@@ -272,6 +272,21 @@ const lockConversation = asyncHandler(async (req, res) => {
   sendResponse(res, 200, result, locked ? "Chat locked" : "Chat unlocked");
 });
 
+const favouriteConversation = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const conversationId = req.params.id;
+  const favourite = req.body.favourite !== false;
+  const result = await chatService.favouriteConversation(conversationId, userId, favourite);
+  sendResponse(res, 200, result, favourite ? "Chat added to Favourites" : "Chat removed from Favourites");
+});
+
+const clearConversation = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const conversationId = req.params.id;
+  const result = await chatService.clearConversation(conversationId, userId);
+  sendResponse(res, 200, result, "Chat cleared successfully");
+});
+
 module.exports = {
   getConversations,
   getConversationDetails,
@@ -284,4 +299,6 @@ module.exports = {
   archiveConversation,
   muteConversation,
   lockConversation,
+  favouriteConversation,
+  clearConversation,
 };

@@ -2,7 +2,9 @@
 
 import { use, useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getConversationDetails } from "@/services/chat/conversations";
+import { getConversationDetails, favouriteConversation, clearConversation } from "@/services/chat/conversations";
+import { blockUser, unblockUser } from "@/services/user/contacts";
+import { getUserProfileById } from "@/services/user/profile";
 
 const getAvatarUrl = (path) => {
   if (!path) return null;
@@ -47,6 +49,8 @@ export default function ContactProfilePage({ params: paramsPromise }) {
   const [conversation, setConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFavourite, setIsFavourite] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [targetUserId, setTargetUserId] = useState(null);
 
   useEffect(() => {
     if (id) {
@@ -55,18 +59,73 @@ export default function ContactProfilePage({ params: paramsPromise }) {
     }
   }, [id]);
 
-  const handleToggleFavouriteProfile = () => {
+  const handleToggleFavouriteProfile = async () => {
+    const nextVal = !isFavourite;
     const favIds = JSON.parse(localStorage.getItem("favouriteChatIds") || "[]");
-    let updatedVal = false;
-    if (favIds.includes(id)) {
-      const index = favIds.indexOf(id);
-      favIds.splice(index, 1);
+    if (nextVal) {
+      if (!favIds.includes(id)) favIds.push(id);
     } else {
-      favIds.push(id);
-      updatedVal = true;
+      const index = favIds.indexOf(id);
+      if (index > -1) favIds.splice(index, 1);
     }
     localStorage.setItem("favouriteChatIds", JSON.stringify(favIds));
-    setIsFavourite(updatedVal);
+    setIsFavourite(nextVal);
+
+    try {
+      await favouriteConversation(id, nextVal);
+    } catch (err) {
+      console.error("Failed to sync favourite state to backend:", err);
+    }
+  };
+
+  const handleToggleBlock = async () => {
+    if (!targetUserId) return;
+    const nextVal = !isBlocked;
+    try {
+      if (nextVal) {
+        await blockUser(targetUserId);
+        alert(`${profileDetails.name} has been blocked.`);
+      } else {
+        await unblockUser(targetUserId);
+        alert(`${profileDetails.name} has been unblocked.`);
+      }
+      setIsBlocked(nextVal);
+    } catch (err) {
+      console.error("Failed to toggle block status:", err);
+      alert(err.message || "Failed to update block status.");
+    }
+  };
+
+  const handleClearChat = async () => {
+    const confirmClear = confirm("Are you sure you want to clear all messages in this chat?");
+    if (!confirmClear) return;
+    try {
+      await clearConversation(id);
+      alert("Chat messages cleared successfully!");
+      router.push(`/chats/${id}`);
+    } catch (err) {
+      console.error("Failed to clear chat:", err);
+      alert(err.message || "Failed to clear chat.");
+    }
+  };
+
+  const handleAddToList = () => {
+    const listName = prompt("Enter list name to add this contact to (e.g. Work, Family):");
+    if (!listName) return;
+    const cleanName = listName.trim();
+    if (!cleanName) return;
+    
+    const lists = JSON.parse(localStorage.getItem("customLists") || "{}");
+    if (!lists[cleanName]) {
+      lists[cleanName] = [];
+    }
+    if (!lists[cleanName].includes(id)) {
+      lists[cleanName].push(id);
+      localStorage.setItem("customLists", JSON.stringify(lists));
+      alert(`Contact added to list "${cleanName}"!`);
+    } else {
+      alert(`Contact is already in list "${cleanName}".`);
+    }
   };
 
   useEffect(() => {
@@ -76,6 +135,22 @@ export default function ContactProfilePage({ params: paramsPromise }) {
         const res = await getConversationDetails(id);
         if (res && res.success && res.data) {
           setConversation(res.data);
+          
+          const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+          let currentUserId = "";
+          if (storedUser) {
+            try {
+              currentUserId = JSON.parse(storedUser).id;
+            } catch (_) {}
+          }
+          const otherParticipant = res.data.participants.find(p => p._id !== currentUserId) || {};
+          if (otherParticipant._id) {
+            setTargetUserId(otherParticipant._id);
+            const pRes = await getUserProfileById(otherParticipant._id);
+            if (pRes && pRes.success && pRes.data) {
+              setIsBlocked(!!pRes.data.isBlocked);
+            }
+          }
         }
       } catch (err) {
         console.error("Failed to load profile details:", err);
@@ -618,24 +693,33 @@ export default function ContactProfilePage({ params: paramsPromise }) {
             </div>
 
             {/* Add to list */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+            <div 
+              onClick={handleAddToList}
+              className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer"
+            >
               <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">label</span>
               <span className="text-[15px] font-bold text-zinc-700 dark:text-zinc-300">Add to list</span>
             </div>
 
             {/* Clear chat */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+            <div 
+              onClick={handleClearChat}
+              className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer"
+            >
               <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">block</span>
               <span className="text-[15px] font-bold text-zinc-700 dark:text-zinc-300">Clear chat</span>
             </div>
 
             {/* Block / Exit */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-red-50/50 dark:hover:bg-red-950/20 active:bg-red-100/30 dark:active:bg-red-900/30 cursor-pointer text-red-500">
+            <div 
+              onClick={isGroup ? null : handleToggleBlock}
+              className="flex items-center px-4 py-3.5 hover:bg-red-50/50 dark:hover:bg-red-950/20 active:bg-red-100/30 dark:active:bg-red-900/30 cursor-pointer text-red-500"
+            >
               <span className="material-symbols-outlined mr-4 text-[22px]">
                 {isGroup ? "logout" : "block"}
               </span>
               <span className="text-[15px] font-bold">
-                {isGroup ? "Exit group" : `Block ${profileDetails.name}`}
+                {isGroup ? "Exit group" : (isBlocked ? `Unblock ${profileDetails.name}` : `Block ${profileDetails.name}`)}
               </span>
             </div>
 

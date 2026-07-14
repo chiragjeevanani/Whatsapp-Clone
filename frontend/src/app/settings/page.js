@@ -60,18 +60,44 @@ export default function SettingsPage() {
   const qrStreamRef = useRef(null);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && !window.jsQR) {
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  useEffect(() => {
     if (subPage === "qr" && qrTab === "scan_code") {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-        .then((stream) => {
+      const startCamera = async () => {
+        try {
+          // Enforce exact back camera first
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: { exact: "environment" } } 
+          });
           qrStreamRef.current = stream;
           if (qrVideoRef.current) {
             qrVideoRef.current.srcObject = stream;
             qrVideoRef.current.play().catch(() => {});
           }
-        })
-        .catch((err) => {
-          console.error("Failed to access camera for QR scanner:", err);
-        });
+        } catch (_) {
+          // Fallback to default rear/webcam if exact environment fails
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+              video: { facingMode: "environment" } 
+            });
+            qrStreamRef.current = stream;
+            if (qrVideoRef.current) {
+              qrVideoRef.current.srcObject = stream;
+              qrVideoRef.current.play().catch(() => {});
+            }
+          } catch (err) {
+            console.error("Failed to access camera for QR scanner:", err);
+          }
+        }
+      };
+      startCamera();
     } else {
       if (qrStreamRef.current) {
         qrStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -83,6 +109,61 @@ export default function SettingsPage() {
         qrStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
+  }, [subPage, qrTab]);
+
+  useEffect(() => {
+    let animationFrameId;
+    let canvas;
+    
+    if (subPage === "qr" && qrTab === "scan_code") {
+      canvas = document.createElement("canvas");
+      
+      const checkQRCode = () => {
+        if (qrVideoRef.current && qrVideoRef.current.readyState === qrVideoRef.current.HAVE_ENOUGH_DATA) {
+          const video = qrVideoRef.current;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          
+          if (window.jsQR) {
+            const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: "dontInvert",
+            });
+            if (code && code.data) {
+              console.log("Found QR code data:", code.data);
+              let phone = "";
+              if (code.data.includes("scanPhone=")) {
+                const urlParams = new URLSearchParams(code.data.substring(code.data.indexOf("?")));
+                phone = urlParams.get("scanPhone");
+              } else if (/^\+?[0-9]{10,15}$/.test(code.data.trim())) {
+                phone = code.data.trim();
+              }
+              
+              if (phone) {
+                if (qrStreamRef.current) {
+                  qrStreamRef.current.getTracks().forEach((track) => track.stop());
+                  qrStreamRef.current = null;
+                }
+                router.push(`/chats?scanPhone=${encodeURIComponent(phone)}`);
+                return;
+              }
+            }
+          }
+        }
+        animationFrameId = requestAnimationFrame(checkQRCode);
+      };
+      
+      const timer = setTimeout(() => {
+        checkQRCode();
+      }, 1000);
+      
+      return () => {
+        clearTimeout(timer);
+        cancelAnimationFrame(animationFrameId);
+      };
+    }
   }, [subPage, qrTab]);
 
   const getAvatarUrl = (path) => {
@@ -427,42 +508,6 @@ export default function SettingsPage() {
                 <div className="absolute bottom-4 left-0 right-0 text-center z-10">
                   <span className="text-[10px] text-white/70 font-semibold uppercase tracking-wider bg-black/40 px-3 py-1 rounded-full">Align QR Code within frame</span>
                 </div>
-              </div>
-
-              {/* Interactive Simulation Input Form */}
-              <div className="w-full bg-white dark:bg-[#111b21] rounded-2xl border border-zinc-100 dark:border-[#222d34] shadow-sm p-4 flex flex-col gap-3">
-                <span className="text-[11px] font-bold text-[#00a884] dark:text-[#ff2d55] uppercase tracking-wider">
-                  Simulate QR Scan (Test)
-                </span>
-
-                <p className="text-[11.5px] text-zinc-400 dark:text-zinc-500 leading-normal">
-                  No camera scanner permissions required! Enter any contact number to simulate scanning their QR code.
-                </p>
-
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const num = e.target.simPhone.value.trim();
-                    if (num) {
-                      router.push(`/chats?scanPhone=${encodeURIComponent(num)}`);
-                    }
-                  }}
-                  className="flex items-center gap-2 mt-1"
-                >
-                  <input
-                    name="simPhone"
-                    type="text"
-                    placeholder="e.g. +918765435678"
-                    className="flex-1 bg-zinc-50 dark:bg-[#202c33] border-none outline-none focus:outline-none rounded-xl py-2 px-3 text-[14px] text-[#111b21] dark:text-white"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    className="bg-[#00a884] dark:bg-[#ff2d55] text-white px-4 py-2 rounded-xl text-[13px] font-bold active:scale-95 transition-transform cursor-pointer"
-                  >
-                    Scan
-                  </button>
-                </form>
               </div>
 
             </div>

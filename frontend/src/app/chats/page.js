@@ -790,29 +790,31 @@ export default function ChatsPage() {
     if (scanPhone) {
       setHasProcessedScan(true);
       const formattedPhone = decodeURIComponent(scanPhone).trim();
-      // Check if chat already exists
-      const existing = chats.find(c => c.name.includes(formattedPhone) || c.id === formattedPhone);
-      if (existing) {
-        router.push(`/chats/${existing.id}`);
-      } else {
-        // Create new dynamic chat and redirect
-        const newId = `chat_${Date.now()}`;
-        const newChat = {
-          id: newId,
-          name: formattedPhone,
-          avatar: null,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-          message: "Scan code successful! Say Hello 👋",
-          unread: 0,
-          isGroup: false,
-          isPinned: false,
-          doubleCheck: false,
-        };
-        setChats(prev => [newChat, ...prev]);
-        router.push(`/chats/${newId}`);
-      }
+      
+      const autoStartChat = async () => {
+        try {
+          // 1. Add contact in backend database
+          const contactRes = await addContact(formattedPhone, formattedPhone);
+          if (contactRes && contactRes.success && contactRes.data) {
+            const targetUserId = contactRes.data.contactUserId || contactRes.data._id;
+            // 2. Establish real-time conversation mapping
+            const chatRes = await createConversation(targetUserId);
+            if (chatRes && chatRes.success && chatRes.data) {
+              const chatObj = chatRes.data;
+              // Clear query parameters
+              window.history.replaceState({}, document.title, "/chats");
+              // Direct route to conversation thread
+              router.push(`/chats/${chatObj._id || chatObj.id}`);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to automatically start chat from scanned QR:", err);
+          alert("Could not start chat: " + (err.message || "Unknown error"));
+        }
+      };
+      autoStartChat();
     }
-  }, [router, chats, hasProcessedScan]);
+  }, [router, hasProcessedScan]);
 
   useEffect(() => {
     const shouldHide = !!(showLockedChatsList || showArchivedChatsList);
@@ -1098,6 +1100,13 @@ export default function ChatsPage() {
     const list = chats
       .filter(chat => !chat.isLocked && !chat.isArchived)
       .filter((chat) => {
+        if (searchQuery.trim() !== "") {
+          return chat.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                 (chat.message && chat.message.toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+        return true;
+      })
+      .filter((chat) => {
         if (activeFilter === "unread") return chat.unread > 0;
         if (activeFilter === "favourites") return chat.isFavourite;
         if (activeFilter === "groups") return chat.isGroup;
@@ -1108,7 +1117,7 @@ export default function ChatsPage() {
       if (!a.isPinned && b.isPinned) return 1;
       return 0;
     });
-  }, [chats, activeFilter]);
+  }, [chats, activeFilter, searchQuery]);
 
   const lockedChats = useMemo(() => {
     return chats.filter(chat => chat.isLocked);
@@ -1475,11 +1484,17 @@ export default function ChatsPage() {
       </header>
       )}
 
-      {/* Search / Meta AI Bar */}
+      {/* Search Bar */}
       <div className="px-4 pt-0.5 pb-1.5">
-        <div className="w-full bg-[#f0f2f5] rounded-full flex items-center px-4 py-2.5 gap-3 shadow-none border border-transparent focus-within:border-zinc-200">
+        <div className="w-full bg-[#f0f2f5] rounded-full flex items-center px-4 py-1.5 gap-3 shadow-none border border-transparent focus-within:border-zinc-200">
           <span className="material-symbols-outlined text-[#667781] text-[20px]">search</span>
-          <span className="text-[#667781] text-[14.5px] font-normal">Ask Meta AI or Search</span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search"
+            className="flex-1 bg-transparent border-none outline-none text-[14.5px] text-[#111b21] placeholder-[#667781] py-1"
+          />
         </div>
       </div>
 

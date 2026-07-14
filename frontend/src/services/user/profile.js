@@ -21,3 +21,7 @@ export async function deleteAvatar() {
 export async function deleteAccount() {
   return apiClient.delete("/profile");
 }
+
+export async function getUserProfileById(userId) {
+  return apiClient.get(`/users/${userId}`);
+}

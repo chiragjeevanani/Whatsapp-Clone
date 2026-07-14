@@ -52,6 +52,11 @@ const conversationSchema = new mongoose.Schema(
       of: Boolean,
       default: {},
     },
+    favourites: {
+      type: Map,
+      of: Boolean,
+      default: {},
+    },
     deletedFor: [
       {
         type: mongoose.Schema.Types.ObjectId,
