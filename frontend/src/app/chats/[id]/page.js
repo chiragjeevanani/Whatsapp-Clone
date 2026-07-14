@@ -16,6 +16,13 @@ const getAvatarUrl = (path) => {
   return `${gatewayBase}${path}`;
 };
 
+const getMediaUrl = (path) => {
+  if (!path) return "";
+  if (path.startsWith("http") || path.startsWith("data:")) return path;
+  const gatewayBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1").replace("/api/v1", "");
+  return `${gatewayBase}${path}`;
+};
+
 const renderAvatar = (avatarUrl, name, sizeClass = "w-[38px] h-[38px]", iconSize = "text-[20px]") => {
   const resolvedUrl = getAvatarUrl(avatarUrl);
   if (resolvedUrl) {
@@ -706,12 +713,16 @@ export default function ChatConversationPage({ params: paramsPromise }) {
             replyTo: m.replyTo ? {
               name: m.replyTo.senderId ? (m.replyTo.senderId.displayName || m.replyTo.senderId.phoneNumber) : "User",
               text: m.replyTo.deletedForEveryone ? "This message was deleted" : m.replyTo.text,
-              image: m.replyTo.deletedForEveryone ? null : m.replyTo.media
+              image: m.replyTo.deletedForEveryone ? null : getMediaUrl(m.replyTo.media)
             } : null,
             forwarded: m.forwarded,
             isVoiceMessage: m.type === "voice" || m.type === "audio",
-            audioUrl: m.media,
-            voiceDuration: m.type === "voice" ? m.text : "0:00"
+            audioUrl: getMediaUrl(m.media),
+            voiceDuration: m.type === "voice" ? m.text : "0:00",
+            image: m.type === "image" ? getMediaUrl(m.media) : null,
+            isDocumentCard: m.type === "document",
+            documentName: m.type === "document" ? m.text : null,
+            documentSize: m.type === "document" && m.fileSize ? `${(m.fileSize / (1024 * 1024)).toFixed(1)} MB` : "0.0 MB"
           }));
           setMessages(formattedMessages);
         }
@@ -794,7 +805,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
           // Check if there is an optimistic temp message with the same text
           const tempIdx = prev.findIndex((m) => m && m.id && typeof m.id === "string" && m.id.startsWith("temp_") && m.text === message.text);
           if (tempIdx !== -1) {
-            const updated = [...prev];
+             const updated = [...prev];
             updated[tempIdx] = {
               id: message._id,
               sender: "outgoing",
@@ -807,12 +818,16 @@ export default function ChatConversationPage({ params: paramsPromise }) {
               replyTo: message.replyTo ? {
                 name: message.replyTo.senderId ? (message.replyTo.senderId.displayName || message.replyTo.senderId.phoneNumber) : "User",
                 text: message.replyTo.deletedForEveryone ? "This message was deleted" : message.replyTo.text,
-                image: message.replyTo.deletedForEveryone ? null : message.replyTo.media
+                image: message.replyTo.deletedForEveryone ? null : getMediaUrl(message.replyTo.media)
               } : null,
               forwarded: message.forwarded,
               isVoiceMessage: message.type === "voice" || message.type === "audio",
-              audioUrl: message.media,
-              voiceDuration: message.type === "voice" ? message.text : "0:00"
+              audioUrl: getMediaUrl(message.media),
+              voiceDuration: message.type === "voice" ? message.text : "0:00",
+              image: message.type === "image" ? getMediaUrl(message.media) : null,
+              isDocumentCard: message.type === "document",
+              documentName: message.type === "document" ? message.text : null,
+              documentSize: message.type === "document" && message.fileSize ? `${(message.fileSize / (1024 * 1024)).toFixed(1)} MB` : "0.0 MB"
             };
             return updated;
           }
@@ -831,12 +846,16 @@ export default function ChatConversationPage({ params: paramsPromise }) {
               replyTo: message.replyTo ? {
                 name: message.replyTo.senderId ? (message.replyTo.senderId.displayName || message.replyTo.senderId.phoneNumber) : "User",
                 text: message.replyTo.deletedForEveryone ? "This message was deleted" : message.replyTo.text,
-                image: message.replyTo.deletedForEveryone ? null : message.replyTo.media
+                image: message.replyTo.deletedForEveryone ? null : getMediaUrl(message.replyTo.media)
               } : null,
               forwarded: message.forwarded,
               isVoiceMessage: message.type === "voice" || message.type === "audio",
-              audioUrl: message.media,
-              voiceDuration: message.type === "voice" ? message.text : "0:00"
+              audioUrl: getMediaUrl(message.media),
+              voiceDuration: message.type === "voice" ? message.text : "0:00",
+              image: message.type === "image" ? getMediaUrl(message.media) : null,
+              isDocumentCard: message.type === "document",
+              documentName: message.type === "document" ? message.text : null,
+              documentSize: message.type === "document" && message.fileSize ? `${(message.fileSize / (1024 * 1024)).toFixed(1)} MB` : "0.0 MB"
             },
           ];
         });

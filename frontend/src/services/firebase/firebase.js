@@ -38,7 +38,7 @@ export const initFcmNotifications = async () => {
     }
 
     const registration = await navigator.serviceWorker.register(
-      `/firebase-messaging-sw.js?messagingSenderId=${encodeURIComponent(firebaseConfig.messagingSenderId || "")}`
+      "/firebase-messaging-sw.js"
     );
     
     // Lazy-load messaging to prevent build/SSR issues

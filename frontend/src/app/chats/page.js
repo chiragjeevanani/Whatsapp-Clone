@@ -1165,20 +1165,7 @@ export default function ChatsPage() {
                     <span className="w-2.5 h-2.5 rounded-full bg-[#00a884]"></span>
                   </button>
 
-                  {/* Locked Chats Verification */}
-                  <button
-                    onClick={() => {
-                      setShowMoreMenu(false);
-                      setSecretError("");
-                      setSecretVerifyValue("");
-                      setShowSecretVerify(true);
-                    }}
-                    className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer text-[#111b21] border-t border-zinc-100"
-                  >
-                    Continue
-                  </button>
-
-                  {/* Create Secret Code */}
+                  {/* Lock Chat */}
                   {currentUser && !currentUser.hasSecretCode && (
                     <button
                       onClick={() => {
@@ -1189,9 +1176,9 @@ export default function ChatsPage() {
                         setSecretCodeStep(1);
                         setShowSecretSetup(true);
                       }}
-                      className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer text-[#111b21]"
+                      className="w-full text-left px-5 py-3 hover:bg-zinc-50 transition-colors font-medium text-[15px] cursor-pointer text-[#111b21] border-t border-zinc-100"
                     >
-                      Create Secret Code
+                      Lock Chat
                     </button>
                   )}
                 </div>
