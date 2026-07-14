@@ -16,6 +16,18 @@ const services = [
     color: "\x1b[36m" // Cyan
   },
   {
+    name: "Chat-Service",
+    dir: path.join(__dirname, "chat-service"),
+    script: "src/server.js",
+    color: "\x1b[35m" // Magenta
+  },
+  {
+    name: "Upload-Service",
+    dir: path.join(__dirname, "upload-service"),
+    script: "src/server.js",
+    color: "\x1b[34m" // Blue
+  },
+  {
     name: "Gateway-Service",
     dir: path.join(__dirname, "gateway-service"),
     script: "src/server.js",

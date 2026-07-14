@@ -15,8 +15,19 @@ const privacySettingsSchema = z.object({
   avatarVisibility: z.enum(["everyone", "contacts", "nobody"]).optional(),
 });
 
+const addContactSchema = z.object({
+  phone: z.string().min(8, "Phone number is too short").max(20, "Phone number is too long"),
+  customName: z.string().max(50).optional().or(z.literal("")),
+});
+
+const syncContactsSchema = z.object({
+  phoneNumbers: z.array(z.string().min(8).max(20)),
+});
+
 module.exports = {
   updateProfileSchema,
   blockUserSchema,
   privacySettingsSchema,
+  addContactSchema,
+  syncContactsSchema,
 };

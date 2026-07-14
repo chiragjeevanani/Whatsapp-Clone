@@ -34,6 +34,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    secretCodeHash: {
+      type: String,
+      default: "",
+    },
+    hasSecretCode: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

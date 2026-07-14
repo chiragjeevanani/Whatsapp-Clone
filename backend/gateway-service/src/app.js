@@ -104,7 +104,7 @@ app.use(
 app.use(
   "/uploads",
   createProxyMiddleware({
-    target: config.services.user,
+    target: config.services.upload,
     changeOrigin: true,
     pathRewrite: {
       "^/": "/uploads/"

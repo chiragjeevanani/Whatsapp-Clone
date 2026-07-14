@@ -21,6 +21,30 @@ class UserRepository {
     return Contact.find({ userId }).populate("contactUserId", "displayName phoneNumber avatarUrl about lastSeen");
   }
 
+  async getAllUsersExcept(userId) {
+    return User.find({ _id: { $ne: userId } }, "displayName phoneNumber avatarUrl about lastSeen isProfileSet");
+  }
+
+  async findByPhone(phoneNumber) {
+    return User.findOne({ phoneNumber });
+  }
+
+  async addContact(userId, contactUserId, customName = "") {
+    return Contact.findOneAndUpdate(
+      { userId, contactUserId },
+      { userId, contactUserId, customName },
+      { upsert: true, new: true }
+    );
+  }
+
+  async removeContact(userId, contactUserId) {
+    return Contact.findOneAndDelete({ userId, contactUserId });
+  }
+
+  async findRegisteredUsersByPhones(phoneNumbers) {
+    return User.find({ phoneNumber: { $in: phoneNumbers } }, "displayName phoneNumber avatarUrl about lastSeen isProfileSet");
+  }
+
   async blockUser(userId, blockedUserId) {
     return BlockedUser.findOneAndUpdate(
       { userId, blockedUserId },
@@ -59,6 +83,14 @@ class UserRepository {
       { userId, deviceId },
       { ...deviceDetails, lastActiveAt: new Date() },
       { upsert: true, new: true }
+    );
+  }
+
+  async updateSecretCode(id, secretCodeHash, hasSecretCode) {
+    return User.findByIdAndUpdate(
+      id,
+      { secretCodeHash, hasSecretCode },
+      { new: true }
     );
   }
 }

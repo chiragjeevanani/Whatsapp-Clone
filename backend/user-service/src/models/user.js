@@ -37,6 +37,21 @@ const userSchema = new mongoose.Schema(
       default: Date.now,
       index: true,
     },
+    secretCodeHash: {
+      type: String,
+      default: "",
+    },
+    hasSecretCode: {
+      type: Boolean,
+      default: false,
+    },
+    fcmTokens: [
+      {
+        token: { type: String, required: true },
+        platform: { type: String, default: "web" },
+        createdAt: { type: Date, default: Date.now }
+      }
+    ],
   },
   {
     timestamps: true,

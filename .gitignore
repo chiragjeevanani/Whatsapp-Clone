@@ -32,3 +32,6 @@ backend/**/*.log
 # OS files
 .DS_Store
 Thumbs.db
+google-services.json
+firebase.txt
+appmetachat-firebase-adminsdk-*.json

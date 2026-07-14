@@ -75,6 +75,12 @@ export default function SettingsPage() {
 
   // Fetch profile on mount
   useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
     async function loadProfile() {
       try {
         const res = await getProfile();
@@ -90,7 +96,7 @@ export default function SettingsPage() {
       }
     }
     loadProfile();
-  }, []);
+  }, [router]);
 
   // Zod Client-Side Validations
   const nameSchema = z.string().trim().min(2, "Name must be at least 2 characters").max(40, "Name cannot exceed 40 characters").refine(val => val.length > 0, "Name cannot be empty");

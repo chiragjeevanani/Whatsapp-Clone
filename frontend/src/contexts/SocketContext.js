@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
+import { socketClient } from "@/lib/socket";
+import { SOCKET_URL } from "@/config";
 
 const SocketContext = createContext(null);
 
@@ -13,19 +15,31 @@ export function SocketProvider({ children }) {
   useEffect(() => {
     if (!user) {
       if (socket) {
-        socket.disconnect();
+        socketClient.disconnect();
         setSocket(null);
+        setConnected(false);
       }
       return;
     }
 
-    // Socket.io initialization placeholder
-    // Real initialization will happen when backend is integrated and socket client library is set up.
-    console.log("WebSocket client initialized for user:", user.id);
-    setConnected(true);
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const client = socketClient.connect(SOCKET_URL, token);
+    setSocket(client);
+
+    const onConnect = () => setConnected(true);
+    const onDisconnect = () => setConnected(false);
+
+    client.on("connect", onConnect);
+    client.on("disconnect", onDisconnect);
+
+    // If already connected when effect runs
+    if (client.connected) {
+      setConnected(true);
+    }
 
     return () => {
-      setConnected(false);
+      client.off("connect", onConnect);
+      client.off("disconnect", onDisconnect);
     };
   }, [user]);
 

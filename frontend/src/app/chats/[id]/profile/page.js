@@ -1,7 +1,41 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { getConversationDetails } from "@/services/chat/conversations";
+
+const getAvatarUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  const gatewayBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1").replace("/api/v1", "");
+  return `${gatewayBase}${path}`;
+};
+
+const renderAvatar = (avatarUrl, name, sizeClass = "w-[115px] h-[115px]", iconSize = "text-[48px]") => {
+  const resolvedUrl = getAvatarUrl(avatarUrl);
+  if (resolvedUrl) {
+    return (
+      <div className={`${sizeClass} rounded-full overflow-hidden border border-zinc-100 shrink-0`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="w-full h-full object-cover" alt={name} src={resolvedUrl} loading="lazy" decoding="async" />
+      </div>
+    );
+  }
+
+  const cleanName = name && name.startsWith("+") ? name.substring(1) : (name || "");
+  const firstChar = cleanName.trim().charAt(0);
+  const isNumber = !firstChar || /\d/.test(firstChar);
+
+  return (
+    <div className={`${sizeClass} rounded-full flex items-center justify-center shrink-0 bg-teal-50 text-[#00a884] border border-teal-100 font-bold`}>
+      {isNumber ? (
+        <span className={`material-symbols-outlined ${iconSize} fill`}>person</span>
+      ) : (
+        <span className="text-[28px] uppercase">{firstChar}</span>
+      )}
+    </div>
+  );
+};
 
 export default function ContactProfilePage({ params: paramsPromise }) {
   const params = use(paramsPromise);
@@ -10,6 +44,52 @@ export default function ContactProfilePage({ params: paramsPromise }) {
 
   const [chatLock, setChatLock] = useState(false);
   const [translateMsg, setTranslateMsg] = useState(false);
+  const [conversation, setConversation] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      setLoading(true);
+      try {
+        const res = await getConversationDetails(id);
+        if (res && res.success && res.data) {
+          setConversation(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to load profile details:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (id) {
+      loadProfile();
+    }
+  }, [id]);
+
+  const profileDetails = useMemo(() => {
+    if (!conversation) {
+      return {
+        name: "Loading...",
+        phoneNumber: "",
+        avatarUrl: null,
+        about: "Available for chat...",
+      };
+    }
+    const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    let currentUserId = "";
+    if (storedUser) {
+      try {
+        currentUserId = JSON.parse(storedUser).id;
+      } catch (_) {}
+    }
+    const otherParticipant = conversation.participants.find(p => p._id !== currentUserId) || {};
+    return {
+      name: otherParticipant.displayName || otherParticipant.phoneNumber || "Unknown User",
+      phoneNumber: otherParticipant.phoneNumber || "",
+      avatarUrl: otherParticipant.avatarUrl || null,
+      about: otherParticipant.about || "Available for chat...",
+    };
+  }, [conversation]);
 
   const handleBack = () => {
     router.push(`/chats/${id}`);
@@ -19,8 +99,7 @@ export default function ContactProfilePage({ params: paramsPromise }) {
     router.push(`/chats/${id}/media`);
   };
 
-  // Determine if it is a Group or Individual
-  const isGroup = !(id === "kittu" || id === "chirag" || id === "c1" || id === "c2" || id === "c3" || id === "c4" || id === "c5");
+  const isGroup = !(id === "kittu" || id === "chirag" || id === "c1" || id === "c2" || id === "c3" || id === "c4" || id === "c5" || !id.startsWith("group"));
 
   const members = [
     {
@@ -157,28 +236,18 @@ export default function ContactProfilePage({ params: paramsPromise }) {
               </>
             ) : (
               <>
-                {/* Kittu Big Avatar */}
-                <div className="w-[115px] h-[115px] rounded-full overflow-hidden border-2 border-zinc-100 dark:border-zinc-800 shadow-sm mb-3">
-                  <img 
-                    alt="Kittu" 
-                    className="w-full h-full object-cover" 
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuD209t6Zin8k_HGjBSvGIRB_KONmSIL8sbz2S-MQFb6yxRje3Ge3PGp-yyOH_yZg4mCb_u8FkyApwL2yhfjFnLSiwHkH3lawFQHkpZmSRXx5D7BGsdZYSdvP6PhIeM3t9PjrvbV02NUdZMoHPGEZ-ZwJRlrv8enxQjqxirmtclZn9U_UQz7m55E9_VQNGreM6hRVv44INUgYZ7PQRf4Oct93w5plsG6f9LeRAuAOZt_QSgliP9AOs46NF7TylHhikGVRGfXyCWVFLo" 
-                  />
+                {/* Dynamic Big Avatar */}
+                <div className="mb-3">
+                  {renderAvatar(profileDetails.avatarUrl, profileDetails.name, "w-[115px] h-[115px]", "text-[48px]")}
                 </div>
 
                 {/* Contact Name & Number */}
-                <h1 className="text-[22px] font-bold text-[#1c2e35] dark:text-[#e9edef] text-center leading-none tracking-wide">
-                  Kittu
+                <h1 className="text-[22px] font-bold text-[#1c2e35] dark:text-[#e9edef] text-center leading-none tracking-wide truncate max-w-[320px]">
+                  {profileDetails.name}
                 </h1>
                 <p className="text-[14.5px] text-zinc-600 dark:text-zinc-400 mt-2 font-medium">
-                  +91 79993 54471
+                  {profileDetails.phoneNumber}
                 </p>
-
-                {/* Instagram Link */}
-                <div className="flex items-center gap-1.5 mt-2.5 text-[13.5px] text-zinc-500 dark:text-zinc-400 hover:text-[#0b805c] dark:hover:text-[#ff2d55] hover:underline cursor-pointer bg-zinc-50 dark:bg-zinc-900 px-3.5 py-1.5 rounded-full border border-zinc-100/50 dark:border-zinc-800">
-                  <span className="material-symbols-outlined text-[17px]">link</span>
-                  <span className="font-medium">instagram.com/official_tj_music</span>
-                </div>
               </>
             )}
 
@@ -206,6 +275,18 @@ export default function ContactProfilePage({ params: paramsPromise }) {
               </button>
             </div>
           </div>
+
+          {/* About and phone number Section */}
+          {!isGroup && (
+            <div className="bg-white dark:bg-[#0b141a] border-y border-zinc-100 dark:border-zinc-800 mt-2.5 px-4 py-3.5">
+              <span className="block text-[13px] text-[#00a884] dark:text-[#8696a0] font-bold uppercase tracking-wide mb-2">About and phone number</span>
+              <span className="block text-[15.5px] font-semibold text-[#1c2e35] dark:text-[#e9edef] leading-snug">{profileDetails.about}</span>
+              <span className="block text-[12px] text-zinc-400 dark:text-zinc-500 mt-1">Available status</span>
+              <hr className="my-3 border-zinc-100 dark:border-zinc-800" />
+              <span className="block text-[15.5px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">{profileDetails.phoneNumber}</span>
+              <span className="block text-[12px] text-zinc-400 dark:text-zinc-500 mt-1">Mobile</span>
+            </div>
+          )}
 
           {/* Media, links, and docs Section */}
           <div className="bg-white dark:bg-[#0b141a] border-y border-zinc-100 dark:border-zinc-800 mt-2.5 py-3.5">
@@ -476,7 +557,7 @@ export default function ContactProfilePage({ params: paramsPromise }) {
                     <div className="w-[42px] h-[42px] rounded-full bg-[#00a884] dark:bg-[#ff2d55] text-white flex items-center justify-center mr-3.5 shrink-0">
                       <span className="material-symbols-outlined text-[22px]">groups</span>
                     </div>
-                    <span className="text-[15.5px] font-bold text-zinc-800 dark:text-zinc-200">Create group with Kittu</span>
+                    <span className="text-[15.5px] font-bold text-zinc-800 dark:text-zinc-200">Create group with {profileDetails.name}</span>
                   </div>
                   <div className="flex items-start px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer">
                     <div className="w-[42px] h-[42px] rounded-full bg-[#00a884] dark:bg-[#ff2d55] text-white flex items-center justify-center mr-3.5 shrink-0 mt-0.5">
@@ -525,15 +606,15 @@ export default function ContactProfilePage({ params: paramsPromise }) {
                 {isGroup ? "logout" : "block"}
               </span>
               <span className="text-[15px] font-bold">
-                {isGroup ? "Exit group" : "Block Kittu"}
+                {isGroup ? "Exit group" : `Block ${profileDetails.name}`}
               </span>
             </div>
 
             {/* Report */}
             <div className="flex items-center px-4 py-3.5 hover:bg-red-50/50 dark:hover:bg-red-950/20 active:bg-red-100/30 dark:active:bg-red-900/30 cursor-pointer text-red-500">
               <span className="material-symbols-outlined mr-4 text-[22px]">thumb_down</span>
-              <span className="text-[15px] font-bold">
-                {isGroup ? "Report group" : "Report Kittu"}
+              <span className="text-[#ff2d55] text-[15px] font-bold">
+                {isGroup ? "Report group" : `Report ${profileDetails.name}`}
               </span>
             </div>
           </div>

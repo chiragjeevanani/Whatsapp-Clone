@@ -32,6 +32,7 @@ class UserService {
       about: user.about,
       isProfileSet: user.isProfileSet,
       lastSeen: user.lastSeen,
+      hasSecretCode: user.hasSecretCode || false,
     };
 
     try {
@@ -63,15 +64,70 @@ class UserService {
   }
 
   async getContacts(userId) {
-    const contacts = await userRepository.getContacts(userId);
-    return contacts.map((c) => ({
-      id: c.contactUserId._id,
-      displayName: c.customName || c.contactUserId.displayName || c.contactUserId.phoneNumber,
-      phoneNumber: c.contactUserId.phoneNumber,
-      avatarUrl: c.contactUserId.avatarUrl,
-      about: c.contactUserId.about,
-      lastSeen: c.contactUserId.lastSeen,
-    }));
+    const allUsers = await userRepository.getAllUsersExcept(userId);
+    const savedContacts = await userRepository.getContacts(userId);
+    
+    const customNamesMap = new Map();
+    savedContacts.forEach((c) => {
+      if (c.contactUserId && c.contactUserId._id && c.customName) {
+        customNamesMap.set(c.contactUserId._id.toString(), c.customName);
+      }
+    });
+
+    return allUsers.map((u) => {
+      const customName = customNamesMap.get(u._id.toString());
+      return {
+        id: u._id,
+        displayName: customName || u.displayName || u.phoneNumber,
+        phoneNumber: u.phoneNumber,
+        avatarUrl: u.avatarUrl,
+        about: u.about,
+        lastSeen: u.lastSeen,
+      };
+    });
+  }
+
+  async addContact(userId, contactPhone, customName = "") {
+    const targetUser = await userRepository.findByPhone(contactPhone);
+    if (!targetUser) {
+      throw new AppError("Target user is not registered on AppMetaChat", 404);
+    }
+    if (userId.toString() === targetUser._id.toString()) {
+      throw new AppError("You cannot add yourself as a contact", 400);
+    }
+    const contact = await userRepository.addContact(userId, targetUser._id, customName);
+    return {
+      id: targetUser._id,
+      displayName: customName || targetUser.displayName || targetUser.phoneNumber,
+      phoneNumber: targetUser.phoneNumber,
+      avatarUrl: targetUser.avatarUrl,
+      about: targetUser.about,
+      lastSeen: targetUser.lastSeen,
+    };
+  }
+
+  async removeContact(userId, contactUserId) {
+    await userRepository.removeContact(userId, contactUserId);
+    return true;
+  }
+
+  async syncContacts(userId, phoneNumbers) {
+    if (!Array.isArray(phoneNumbers)) {
+      throw new AppError("Phone numbers must be an array", 400);
+    }
+    const registeredUsers = await userRepository.findRegisteredUsersByPhones(phoneNumbers);
+    
+    return registeredUsers
+      .filter((u) => u._id.toString() !== userId.toString())
+      .map((u) => ({
+        id: u._id,
+        displayName: u.displayName || u.phoneNumber,
+        phoneNumber: u.phoneNumber,
+        avatarUrl: u.avatarUrl,
+        about: u.about,
+        lastSeen: u.lastSeen,
+        isProfileSet: u.isProfileSet,
+      }));
   }
 
   async blockUser(userId, targetUserId) {
@@ -111,6 +167,75 @@ class UserService {
       lastSeenVisibility: updatedSettings.lastSeenVisibility,
       avatarVisibility: updatedSettings.avatarVisibility,
     };
+  }
+
+  async setupSecretCode(userId, code) {
+    if (!/^\d{6}$/.test(code)) {
+      throw new AppError("Secret code must be exactly 6 numeric digits", 400);
+    }
+    const { hashPassword } = require("../../../shared/utils/hashUtils");
+    const secretCodeHash = await hashPassword(code);
+    
+    const user = await userRepository.updateSecretCode(userId, secretCodeHash, true);
+    if (!user) {
+      throw new AppError("Failed to update secret code", 500);
+    }
+    
+    // Invalidate Redis profile cache
+    const cacheKey = `user:${userId}`;
+    await redisClient.del(cacheKey);
+    
+    return { success: true };
+  }
+
+  async verifySecretCode(userId, code) {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+    if (!user.hasSecretCode || !user.secretCodeHash) {
+      throw new AppError("No secret code setup yet", 400);
+    }
+    const { verifyPassword } = require("../../../shared/utils/hashUtils");
+    const isCorrect = await verifyPassword(code, user.secretCodeHash);
+    if (!isCorrect) {
+      throw new AppError("Incorrect Secret Code", 401);
+    }
+    return { success: true };
+  }
+
+  async updateFcmToken(userId, token, platform = "web") {
+    if (!token || typeof token !== "string" || token.trim() === "") {
+      throw new AppError("Invalid FCM token", 400);
+    }
+    const normalizedPlatform = (platform === "app" || platform === "web") ? platform : "web";
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+    if (!user.fcmTokens) {
+      user.fcmTokens = [];
+    }
+    const tokenExists = user.fcmTokens.some(item => item && item.token === token);
+    if (!tokenExists) {
+      user.fcmTokens.push({ token, platform: normalizedPlatform });
+      await user.save();
+    } else {
+      let changed = false;
+      user.fcmTokens = user.fcmTokens.map(item => {
+        if (item && item.token === token && item.platform !== normalizedPlatform) {
+          changed = true;
+          return { token, platform: normalizedPlatform, createdAt: new Date() };
+        }
+        return item;
+      });
+      if (changed) {
+        await user.save();
+      }
+    }
+    const cacheKey = `user:${userId}`;
+    await redisClient.del(cacheKey);
+    return { success: true };
   }
 }
 

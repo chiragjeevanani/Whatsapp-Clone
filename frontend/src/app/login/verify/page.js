@@ -145,7 +145,7 @@ export default function VerifyPage() {
         {/* Form Card */}
         <form
           onSubmit={handleSubmit}
-          className="w-full rounded-2xl p-6 flex flex-col items-center gap-6 relative"
+          className="w-full rounded-2xl p-5 sm:p-6 flex flex-col items-center gap-6 relative"
           style={{
             background: "rgba(255, 255, 255, 0.72)",
             backdropFilter: "blur(20px)",
@@ -186,7 +186,7 @@ export default function VerifyPage() {
           </div>
 
            {/* OTP Inputs */}
-          <div className="flex justify-between gap-2 w-full px-1" id="otp-container">
+          <div className="grid grid-cols-6 gap-1.5 sm:gap-2 w-full px-1" id="otp-container">
             {code.map((val, idx) => (
               <input
                 key={idx}
@@ -198,7 +198,7 @@ export default function VerifyPage() {
                 value={val}
                 onChange={(e) => handleInputChange(idx, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(idx, e)}
-                className="w-11 h-14 text-center font-bold text-[20px] rounded-xl border border-zinc-200 bg-white/50 focus:border-[#006d2f] focus:ring-2 focus:ring-[#006d2f]/20 outline-none transition-all text-zinc-800"
+                className="w-full h-12 sm:h-14 text-center font-bold text-[18px] sm:text-[20px] rounded-xl border border-zinc-200 bg-white/50 focus:border-[#006d2f] focus:ring-2 focus:ring-[#006d2f]/20 outline-none transition-all text-zinc-800"
                 autoFocus={idx === 0}
               />
             ))}
