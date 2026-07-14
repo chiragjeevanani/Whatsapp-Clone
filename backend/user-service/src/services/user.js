@@ -141,12 +141,106 @@ class UserService {
 
     await userRepository.blockUser(userId, targetUserId);
     logger.info(`User ${userId} blocked target user: ${targetUserId}`);
+
+    // Create system message in conversation
+    try {
+      const mongoose = require("mongoose");
+      try {
+        mongoose.model("Conversation");
+      } catch (_) {
+        require("../../../chat-service/src/models/conversation");
+      }
+      try {
+        mongoose.model("Message");
+      } catch (_) {
+        require("../../../chat-service/src/models/message");
+      }
+
+      const Conversation = mongoose.model("Conversation");
+      const Message = mongoose.model("Message");
+
+      const conversation = await Conversation.findOne({
+        isGroup: false,
+        participants: { $all: [userId, targetUserId] }
+      });
+
+      if (conversation) {
+        const systemMessage = await Message.create({
+          conversationId: conversation._id,
+          senderId: userId,
+          receiver: targetUserId,
+          type: "system",
+          text: "You blocked this contact.",
+          status: "read"
+        });
+
+        conversation.lastMessage = {
+          text: "You blocked this contact.",
+          senderId: userId,
+          timestamp: new Date(),
+          type: "system"
+        };
+        conversation.lastMessageId = systemMessage._id;
+        conversation.lastMessageAt = new Date();
+        await conversation.save();
+      }
+    } catch (err) {
+      logger.error("Failed to write block system message:", err);
+    }
+
     return true;
   }
 
   async unblockUser(userId, targetUserId) {
     await userRepository.unblockUser(userId, targetUserId);
     logger.info(`User ${userId} unblocked target user: ${targetUserId}`);
+
+    // Create system message in conversation
+    try {
+      const mongoose = require("mongoose");
+      try {
+        mongoose.model("Conversation");
+      } catch (_) {
+        require("../../../chat-service/src/models/conversation");
+      }
+      try {
+        mongoose.model("Message");
+      } catch (_) {
+        require("../../../chat-service/src/models/message");
+      }
+
+      const Conversation = mongoose.model("Conversation");
+      const Message = mongoose.model("Message");
+
+      const conversation = await Conversation.findOne({
+        isGroup: false,
+        participants: { $all: [userId, targetUserId] }
+      });
+
+      if (conversation) {
+        const systemMessage = await Message.create({
+          conversationId: conversation._id,
+          senderId: userId,
+          receiver: targetUserId,
+          type: "system",
+          text: "You unblocked this contact.",
+          status: "read"
+        });
+
+        conversation.lastMessage = {
+          text: "You unblocked this contact.",
+          senderId: userId,
+          timestamp: new Date(),
+          type: "system"
+        };
+        conversation.lastMessageId = systemMessage._id;
+        conversation.lastMessageAt = new Date();
+        await conversation.save();
+      }
+    } catch (err) {
+      logger.error("Failed to write unblock system message:", err);
+    }
+
     return true;
   }
 

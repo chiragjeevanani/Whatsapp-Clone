@@ -5,7 +5,10 @@ class ChatRepository {
   async findConversations(userId) {
     return Conversation.find({ 
       participants: userId,
-      "lastMessage.text": { $ne: "Conversation started" },
+      $or: [
+        { isGroup: true },
+        { "lastMessage.text": { $ne: "Conversation started" } }
+      ],
       deletedFor: { $ne: userId }
     })
       .populate("participants", "displayName phoneNumber avatarUrl about lastSeen")
@@ -15,7 +18,9 @@ class ChatRepository {
 
   async findConversationById(conversationId) {
     return Conversation.findById(conversationId)
-      .populate("participants", "displayName phoneNumber avatarUrl about lastSeen");
+      .populate("participants", "displayName phoneNumber avatarUrl about lastSeen")
+      .populate("admins", "displayName phoneNumber avatarUrl about lastSeen")
+      .populate("createdBy", "displayName phoneNumber");
   }
 
   async find1to1Conversation(user1Id, user2Id) {
@@ -37,6 +42,69 @@ class ChatRepository {
     });
     const saved = await conversation.save();
     return saved.populate("participants", "displayName phoneNumber avatarUrl about lastSeen");
+  }
+
+  async createGroupConversation(participantIds, name, createdBy, avatarUrl = "") {
+    const conversation = new Conversation({
+      participants: participantIds,
+      name,
+      isGroup: true,
+      avatarUrl,
+      createdBy,
+      admins: [createdBy],
+      lastMessage: {
+        text: "Group created",
+        timestamp: new Date(),
+        type: "system",
+      },
+    });
+    const saved = await conversation.save();
+    return saved.populate("participants", "displayName phoneNumber avatarUrl about lastSeen");
+  }
+
+  async addParticipants(conversationId, userIds) {
+    return Conversation.findByIdAndUpdate(
+      conversationId,
+      { $addToSet: { participants: { $each: userIds } } },
+      { new: true }
+    ).populate("participants", "displayName phoneNumber avatarUrl about lastSeen");
+  }
+
+  async removeParticipant(conversationId, userId) {
+    return Conversation.findByIdAndUpdate(
+      conversationId,
+      { 
+        $pull: { 
+          participants: userId,
+          admins: userId 
+        } 
+      },
+      { new: true }
+    ).populate("participants", "displayName phoneNumber avatarUrl about lastSeen");
+  }
+
+  async updateGroupInfo(conversationId, updates) {
+    return Conversation.findByIdAndUpdate(
+      conversationId,
+      { $set: updates },
+      { new: true }
+    ).populate("participants", "displayName phoneNumber avatarUrl about lastSeen");
+  }
+
+  async addAdmin(conversationId, userId) {
+    return Conversation.findByIdAndUpdate(
+      conversationId,
+      { $addToSet: { admins: userId } },
+      { new: true }
+    ).populate("participants", "displayName phoneNumber avatarUrl about lastSeen");
+  }
+
+  async removeAdmin(conversationId, userId) {
+    return Conversation.findByIdAndUpdate(
+      conversationId,
+      { $pull: { admins: userId } },
+      { new: true }
+    ).populate("participants", "displayName phoneNumber avatarUrl about lastSeen");
   }
 
   async updateLastMessage(conversationId, text, senderId, type = "text", messageId = null) {
@@ -65,6 +133,7 @@ class ChatRepository {
       query._id = { $lt: before };
     }
     const messages = await Message.find(query)
+      .populate("senderId", "displayName phoneNumber avatarUrl")
       .populate({
         path: "replyTo",
         populate: { path: "senderId", select: "displayName phoneNumber" }

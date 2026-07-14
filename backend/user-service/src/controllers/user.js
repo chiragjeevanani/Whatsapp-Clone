@@ -21,7 +21,9 @@ const getUserById = asyncHandler(async (req, res) => {
   const currentUserId = req.user.userId;
   const profile = await userService.getProfile(targetUserId);
   const isBlocked = await userService.isBlocked(currentUserId, targetUserId);
+  const amIBlocked = await userService.isBlocked(targetUserId, currentUserId);
   profile.isBlocked = isBlocked;
+  profile.amIBlocked = amIBlocked;
   sendResponse(res, 200, profile, "User profile fetched successfully");
 });
 

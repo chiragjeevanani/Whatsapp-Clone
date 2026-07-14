@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getConversationDetails, favouriteConversation, clearConversation } from "@/services/chat/conversations";
 import { blockUser, unblockUser } from "@/services/user/contacts";
 import { getUserProfileById } from "@/services/user/profile";
+import { lockChat } from "@/services/chat/chatActions";
 
 const getAvatarUrl = (path) => {
   if (!path) return null;
@@ -51,6 +52,21 @@ export default function ContactProfilePage({ params: paramsPromise }) {
   const [isFavourite, setIsFavourite] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [targetUserId, setTargetUserId] = useState(null);
+  const [disappearingTimer, setDisappearingTimer] = useState("Off");
+  const [toastMessage, setToastMessage] = useState(null);
+
+  useEffect(() => {
+    if (id) {
+      setDisappearingTimer(localStorage.getItem("disappearingTimer_" + id) || "Off");
+    }
+  }, [id]);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  };
 
   useEffect(() => {
     if (id) {
@@ -70,11 +86,23 @@ export default function ContactProfilePage({ params: paramsPromise }) {
     }
     localStorage.setItem("favouriteChatIds", JSON.stringify(favIds));
     setIsFavourite(nextVal);
+    showToast(nextVal ? "Added to Favourites" : "Removed from Favourites");
 
     try {
       await favouriteConversation(id, nextVal);
     } catch (err) {
       console.error("Failed to sync favourite state to backend:", err);
+    }
+  };
+
+  const handleToggleChatLock = async (checked) => {
+    try {
+      await lockChat(id, checked);
+      setChatLock(checked);
+      showToast(checked ? "Chat locked" : "Chat unlocked");
+    } catch (err) {
+      console.error("Failed to toggle chat lock:", err);
+      showToast(err.message || "Failed to toggle chat lock");
     }
   };
 
@@ -84,15 +112,15 @@ export default function ContactProfilePage({ params: paramsPromise }) {
     try {
       if (nextVal) {
         await blockUser(targetUserId);
-        alert(`${profileDetails.name} has been blocked.`);
+        showToast(`${profileDetails.name} has been blocked.`);
       } else {
         await unblockUser(targetUserId);
-        alert(`${profileDetails.name} has been unblocked.`);
+        showToast(`${profileDetails.name} has been unblocked.`);
       }
       setIsBlocked(nextVal);
     } catch (err) {
       console.error("Failed to toggle block status:", err);
-      alert(err.message || "Failed to update block status.");
+      showToast(err.message || "Failed to update block status.");
     }
   };
 
@@ -101,11 +129,13 @@ export default function ContactProfilePage({ params: paramsPromise }) {
     if (!confirmClear) return;
     try {
       await clearConversation(id);
-      alert("Chat messages cleared successfully!");
-      router.push(`/chats/${id}`);
+      showToast("Chat cleared successfully!");
+      setTimeout(() => {
+        router.push(`/chats/${id}`);
+      }, 1000);
     } catch (err) {
       console.error("Failed to clear chat:", err);
-      alert(err.message || "Failed to clear chat.");
+      showToast(err.message || "Failed to clear chat.");
     }
   };
 
@@ -122,9 +152,9 @@ export default function ContactProfilePage({ params: paramsPromise }) {
     if (!lists[cleanName].includes(id)) {
       lists[cleanName].push(id);
       localStorage.setItem("customLists", JSON.stringify(lists));
-      alert(`Contact added to list "${cleanName}"!`);
+      showToast(`Contact added to list "${cleanName}"!`);
     } else {
-      alert(`Contact is already in list "${cleanName}".`);
+      showToast(`Contact is already in list "${cleanName}".`);
     }
   };
 
@@ -140,8 +170,15 @@ export default function ContactProfilePage({ params: paramsPromise }) {
           let currentUserId = "";
           if (storedUser) {
             try {
-              currentUserId = JSON.parse(storedUser).id;
+              const parsed = JSON.parse(storedUser);
+              currentUserId = parsed.id || parsed._id || "";
             } catch (_) {}
+          }
+          if (res.data.locked) {
+            const isChatLocked = res.data.locked instanceof Map
+              ? res.data.locked.get(currentUserId)
+              : (res.data.locked[currentUserId] || (typeof res.data.locked.get === "function" && res.data.locked.get(currentUserId)));
+            setChatLock(!!isChatLocked);
           }
           const otherParticipant = res.data.participants.find(p => p._id !== currentUserId) || {};
           if (otherParticipant._id) {
@@ -472,23 +509,15 @@ export default function ContactProfilePage({ params: paramsPromise }) {
 
           {/* Options Group 2 */}
           <div className="bg-white dark:bg-[#0b141a] border-y border-zinc-100 dark:border-zinc-800 mt-2.5 divide-y divide-zinc-100/60 dark:divide-zinc-800/60">
-            {/* Encryption */}
-            <div className="flex items-start px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
-              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 mt-0.5 text-[22px]">lock</span>
-              <div className="flex-1">
-                <span className="block text-[15px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">Encryption</span>
-                <span className="block text-[12.5px] text-zinc-500 dark:text-zinc-400 leading-normal mt-0.5">
-                  Messages and calls are end-to-end encrypted. {isGroup ? "Tap to learn more." : "Tap to verify."}
-                </span>
-              </div>
-            </div>
-
             {/* Disappearing messages */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
+            <div 
+              onClick={() => router.push(`/chats/${id}?action=disappearing`)}
+              className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer"
+            >
               <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">pace</span>
               <div className="flex-1">
                 <span className="block text-[15px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">Disappearing messages</span>
-                <span className="block text-[12px] text-zinc-500 dark:text-zinc-400">Off</span>
+                <span className="block text-[12px] text-zinc-500 dark:text-zinc-400">{disappearingTimer}</span>
               </div>
             </div>
 
@@ -505,35 +534,7 @@ export default function ContactProfilePage({ params: paramsPromise }) {
                 <input 
                   type="checkbox" 
                   checked={chatLock} 
-                  onChange={(e) => setChatLock(e.target.checked)} 
-                  className="sr-only peer" 
-                />
-                <div className="w-11 h-6 bg-zinc-200 dark:bg-zinc-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-emerald-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00a884]"></div>
-              </label>
-            </div>
-
-            {/* Advanced privacy */}
-            <div className="flex items-center px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
-              <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">shield</span>
-              <div className="flex-1">
-                <span className="block text-[15px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">Advanced chat privacy</span>
-                <span className="block text-[12.5px] text-zinc-500 dark:text-zinc-400 mt-0.5">Off</span>
-              </div>
-            </div>
-
-            {/* Translate messages toggle */}
-            <div className="flex items-center justify-between px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 cursor-pointer">
-              <div className="flex items-center">
-                <span className="material-symbols-outlined text-zinc-500 dark:text-zinc-400 mr-4 text-[22px]">translate</span>
-                <div>
-                  <span className="block text-[15px] font-semibold text-[#1c2e35] dark:text-[#e9edef]">Translate messages</span>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={translateMsg} 
-                  onChange={(e) => setTranslateMsg(e.target.checked)} 
+                  onChange={(e) => handleToggleChatLock(e.target.checked)} 
                   className="sr-only peer" 
                 />
                 <div className="w-11 h-6 bg-zinc-200 dark:bg-zinc-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-emerald-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00a884]"></div>
@@ -734,6 +735,14 @@ export default function ContactProfilePage({ params: paramsPromise }) {
 
         </div>
       </main>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#111b21] dark:bg-[#202c33] text-white dark:text-[#e9edef] px-5 py-3 rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.15)] text-[14px] font-semibold tracking-wide animate-in fade-in slide-in-from-bottom-4 duration-300 flex items-center gap-2 border border-zinc-200/10 select-none">
+          <span className="material-symbols-outlined text-[18px] text-[#00a884]">info</span>
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 }

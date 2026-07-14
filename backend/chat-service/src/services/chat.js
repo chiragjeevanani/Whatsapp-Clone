@@ -6,7 +6,7 @@ class ChatService {
   async getConversations(userId) {
     const conversations = await chatRepository.findConversations(userId);
     return conversations.map((conv) => {
-      const convObj = conv.toObject();
+      const convObj = conv.toObject({ flattenMaps: true });
       // Map stored unread count from schema Map
       convObj.unreadCount = conv.unreadCount && conv.unreadCount.get 
         ? conv.unreadCount.get(userId.toString()) || 0 
@@ -70,29 +70,64 @@ class ChatService {
       throw new AppError("Access denied", 403);
     }
 
-    // Identify recipient
-    const recipient = conversation.participants.find(p => p._id.toString() !== senderId.toString());
-    
-    // Set receiver in messageData
-    if (recipient) {
-      messageData.receiver = recipient._id;
+    // Identify recipient (only for 1-to-1)
+    let recipient = null;
+    if (!conversation.isGroup) {
+      recipient = conversation.participants.find(p => p._id.toString() !== senderId.toString());
+      
+      // Check block list
+      if (recipient) {
+        const BlockedUser = require("../models/blockedUser");
+        const blockExists = await BlockedUser.findOne({
+          $or: [
+            { userId: senderId, blockedUserId: recipient._id },
+            { userId: recipient._id, blockedUserId: senderId }
+          ]
+        });
+        if (blockExists) {
+          throw new AppError("Message blocked: You have blocked this user or they have blocked you.", 400);
+        }
+      }
+
+      // Set receiver in messageData
+      if (recipient) {
+        messageData.receiver = recipient._id;
+      }
+    } else {
+      // Group check if message sending is restricted to admins only
+      if (conversation.onlyAdminsCanSend) {
+        const isAdmin = conversation.admins.some(admin => admin._id.toString() === senderId.toString());
+        if (!isAdmin) {
+          throw new AppError("Only admins can send messages in this group", 403);
+        }
+      }
     }
 
     // Create message in DB
     let message = await chatRepository.createMessage(conversationId, senderId, messageData);
+    const Message = require("../models/message");
+    
+    const populateOptions = [
+      { path: "senderId", select: "displayName phoneNumber avatarUrl" }
+    ];
     if (message.replyTo) {
-      const Message = require("../models/message");
-      message = await Message.populate(message, {
+      populateOptions.push({
         path: "replyTo",
         populate: { path: "senderId", select: "displayName phoneNumber" }
       });
     }
+    message = await Message.populate(message, populateOptions);
 
     // Update last message in Conversation
     await chatRepository.updateLastMessage(conversationId, message.text || `Sent ${message.type}`, senderId, message.type, message._id);
 
-    // Increment unread count for recipient
-    if (recipient) {
+    // Increment unread count for recipients
+    if (conversation.isGroup) {
+      const otherParticipants = conversation.participants.filter(p => p._id.toString() !== senderId.toString());
+      for (const p of otherParticipants) {
+        await chatRepository.incrementUnreadCount(conversationId, p._id.toString());
+      }
+    } else if (recipient) {
       await chatRepository.incrementUnreadCount(conversationId, recipient._id.toString());
     }
 
@@ -293,6 +328,215 @@ class ChatService {
     await chatRepository.clearConversation(conversationId, userId);
     logger.info(`Conversation ${conversationId} cleared messages for user ${userId}`);
     return { conversationId };
+  }
+
+  async createGroupConversation(userId, name, participantIds, avatarUrl = "") {
+    const uniqueIds = Array.from(new Set([userId.toString(), ...participantIds.map(id => id.toString())]));
+    const conversation = await chatRepository.createGroupConversation(uniqueIds, name, userId, avatarUrl);
+    
+    const User = require("../models/user");
+    const creator = await User.findById(userId);
+    const creatorName = creator ? creator.displayName || creator.phoneNumber : "Someone";
+    
+    const systemMsg = await chatRepository.createMessage(conversation._id, userId, {
+      text: `${creatorName} created group "${name}"`,
+      type: "system"
+    });
+
+    await chatRepository.updateLastMessage(conversation._id, systemMsg.text, userId, "system", systemMsg._id);
+    return conversation;
+  }
+
+  async addGroupMembers(conversationId, adminId, memberIds) {
+    const conversation = await chatRepository.findConversationById(conversationId);
+    if (!conversation) throw new AppError("Group not found", 404);
+    if (!conversation.isGroup) throw new AppError("Conversation is not a group", 400);
+    
+    const isAdmin = conversation.admins.some(admin => admin._id.toString() === adminId.toString());
+    if (!isAdmin) throw new AppError("Only group admins can add members", 403);
+
+    const existingParticipants = conversation.participants.map(p => p._id.toString());
+    const newMemberIds = memberIds.filter(id => !existingParticipants.includes(id.toString()));
+    
+    if (newMemberIds.length === 0) {
+      return conversation;
+    }
+
+    const updatedGroup = await chatRepository.addParticipants(conversationId, newMemberIds);
+    
+    const User = require("../models/user");
+    const admin = await User.findById(adminId);
+    const adminName = admin ? admin.displayName || admin.phoneNumber : "Admin";
+    
+    const addedUsers = await User.find({ _id: { $in: newMemberIds } });
+    const addedNames = addedUsers.map(u => u.displayName || u.phoneNumber).join(", ");
+    
+    const systemMsg = await chatRepository.createMessage(conversationId, adminId, {
+      text: `${adminName} added ${addedNames}`,
+      type: "system"
+    });
+
+    await chatRepository.updateLastMessage(conversationId, systemMsg.text, adminId, "system", systemMsg._id);
+    return updatedGroup;
+  }
+
+  async removeGroupMember(conversationId, adminId, targetUserId) {
+    const conversation = await chatRepository.findConversationById(conversationId);
+    if (!conversation) throw new AppError("Group not found", 404);
+    if (!conversation.isGroup) throw new AppError("Conversation is not a group", 400);
+
+    const isAdmin = conversation.admins.some(admin => admin._id.toString() === adminId.toString());
+    if (!isAdmin) throw new AppError("Only group admins can remove members", 403);
+
+    const isMember = conversation.participants.some(p => p._id.toString() === targetUserId.toString());
+    if (!isMember) throw new AppError("User is not a member of this group", 400);
+
+    const updatedGroup = await chatRepository.removeParticipant(conversationId, targetUserId);
+
+    const User = require("../models/user");
+    const admin = await User.findById(adminId);
+    const adminName = admin ? admin.displayName || admin.phoneNumber : "Admin";
+    
+    const targetUser = await User.findById(targetUserId);
+    const targetName = targetUser ? targetUser.displayName || targetUser.phoneNumber : "User";
+
+    const systemMsg = await chatRepository.createMessage(conversationId, adminId, {
+      text: `${adminName} removed ${targetName}`,
+      type: "system"
+    });
+
+    await chatRepository.updateLastMessage(conversationId, systemMsg.text, adminId, "system", systemMsg._id);
+    return updatedGroup;
+  }
+
+  async leaveGroup(conversationId, userId) {
+    const conversation = await chatRepository.findConversationById(conversationId);
+    if (!conversation) throw new AppError("Group not found", 404);
+    if (!conversation.isGroup) throw new AppError("Conversation is not a group", 400);
+
+    const isMember = conversation.participants.some(p => p._id.toString() === userId.toString());
+    if (!isMember) throw new AppError("You are not a member of this group", 400);
+
+    const wasAdmin = conversation.admins.some(admin => admin._id.toString() === userId.toString());
+    let updatedGroup = await chatRepository.removeParticipant(conversationId, userId);
+
+    if (updatedGroup.participants.length > 0 && wasAdmin) {
+      const remainingAdmins = updatedGroup.participants.filter(p => 
+        conversation.admins.some(admin => admin._id.toString() === p._id.toString() && admin._id.toString() !== userId.toString())
+      );
+      
+      if (remainingAdmins.length === 0) {
+        const nextAdminId = updatedGroup.participants[0]._id;
+        updatedGroup = await chatRepository.addAdmin(conversationId, nextAdminId);
+      }
+    }
+
+    const User = require("../models/user");
+    const user = await User.findById(userId);
+    const userName = user ? user.displayName || user.phoneNumber : "Someone";
+
+    const systemMsg = await chatRepository.createMessage(conversationId, userId, {
+      text: `${userName} left the group`,
+      type: "system"
+    });
+
+    await chatRepository.updateLastMessage(conversationId, systemMsg.text, userId, "system", systemMsg._id);
+    return updatedGroup;
+  }
+
+  async updateGroupInfo(conversationId, userId, updates) {
+    const conversation = await chatRepository.findConversationById(conversationId);
+    if (!conversation) throw new AppError("Group not found", 404);
+    if (!conversation.isGroup) throw new AppError("Conversation is not a group", 400);
+
+    const isAdmin = conversation.admins.some(admin => admin._id.toString() === userId.toString());
+    if (!isAdmin) throw new AppError("Only admins can update group info", 403);
+
+    const allowedUpdates = {};
+    if (updates.name !== undefined) allowedUpdates.name = updates.name;
+    if (updates.groupDescription !== undefined) allowedUpdates.groupDescription = updates.groupDescription;
+    if (updates.avatarUrl !== undefined) allowedUpdates.avatarUrl = updates.avatarUrl;
+    if (updates.onlyAdminsCanSend !== undefined) allowedUpdates.onlyAdminsCanSend = updates.onlyAdminsCanSend;
+
+    const updatedGroup = await chatRepository.updateGroupInfo(conversationId, allowedUpdates);
+
+    const User = require("../models/user");
+    const user = await User.findById(userId);
+    const userName = user ? user.displayName || user.phoneNumber : "Admin";
+
+    let changeText = "";
+    if (updates.name && updates.name !== conversation.name) {
+      changeText = `${userName} changed the group name to "${updates.name}"`;
+    } else if (updates.groupDescription !== undefined && updates.groupDescription !== conversation.groupDescription) {
+      changeText = `${userName} changed the group description`;
+    } else if (updates.avatarUrl !== undefined && updates.avatarUrl !== conversation.avatarUrl) {
+      changeText = `${userName} updated group icon`;
+    } else if (updates.onlyAdminsCanSend !== undefined && updates.onlyAdminsCanSend !== conversation.onlyAdminsCanSend) {
+      changeText = `${userName} ${updates.onlyAdminsCanSend ? "restricted messaging to admins only" : "allowed all participants to send messages"}`;
+    }
+
+    if (changeText) {
+      const systemMsg = await chatRepository.createMessage(conversationId, userId, {
+        text: changeText,
+        type: "system"
+      });
+      await chatRepository.updateLastMessage(conversationId, systemMsg.text, userId, "system", systemMsg._id);
+    }
+
+    return updatedGroup;
+  }
+
+  async makeAdmin(conversationId, adminId, targetUserId) {
+    const conversation = await chatRepository.findConversationById(conversationId);
+    if (!conversation) throw new AppError("Group not found", 404);
+    if (!conversation.isGroup) throw new AppError("Conversation is not a group", 400);
+
+    const isAdmin = conversation.admins.some(admin => admin._id.toString() === adminId.toString());
+    if (!isAdmin) throw new AppError("Only admins can promote members", 403);
+
+    const isMember = conversation.participants.some(p => p._id.toString() === targetUserId.toString());
+    if (!isMember) throw new AppError("Target user is not a member of this group", 400);
+
+    const updatedGroup = await chatRepository.addAdmin(conversationId, targetUserId);
+
+    const User = require("../models/user");
+    const admin = await User.findById(adminId);
+    const adminName = admin ? admin.displayName || admin.phoneNumber : "Admin";
+    const targetUser = await User.findById(targetUserId);
+    const targetName = targetUser ? targetUser.displayName || targetUser.phoneNumber : "User";
+
+    const systemMsg = await chatRepository.createMessage(conversationId, adminId, {
+      text: `${adminName} made ${targetName} a group admin`,
+      type: "system"
+    });
+    await chatRepository.updateLastMessage(conversationId, systemMsg.text, adminId, "system", systemMsg._id);
+
+    return updatedGroup;
+  }
+
+  async removeAdmin(conversationId, adminId, targetUserId) {
+    const conversation = await chatRepository.findConversationById(conversationId);
+    if (!conversation) throw new AppError("Group not found", 404);
+    if (!conversation.isGroup) throw new AppError("Conversation is not a group", 400);
+
+    const isAdmin = conversation.admins.some(admin => admin._id.toString() === adminId.toString());
+    if (!isAdmin) throw new AppError("Only admins can dismiss other admins", 403);
+
+    const updatedGroup = await chatRepository.removeAdmin(conversationId, targetUserId);
+
+    const User = require("../models/user");
+    const admin = await User.findById(adminId);
+    const adminName = admin ? admin.displayName || admin.phoneNumber : "Admin";
+    const targetUser = await User.findById(targetUserId);
+    const targetName = targetUser ? targetUser.displayName || targetUser.phoneNumber : "User";
+
+    const systemMsg = await chatRepository.createMessage(conversationId, adminId, {
+      text: `${adminName} dismissed ${targetName} as admin`,
+      type: "system"
+    });
+    await chatRepository.updateLastMessage(conversationId, systemMsg.text, adminId, "system", systemMsg._id);
+
+    return updatedGroup;
   }
 }
 

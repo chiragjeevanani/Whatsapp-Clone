@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/hooks/useTheme";
 import { getContacts, addContact } from "@/services/user/contacts";
 import { getConversations, createConversation } from "@/services/chat/conversations";
+import { createGroup } from "@/services/chat/groupChat";
 import { deleteChat, archiveChat, muteChat, lockChat } from "@/services/chat/chatActions";
 import { getProfile } from "@/services/user/getProfile";
 import { setupSecretCode, verifySecretCode } from "@/services/user/secretCode";
@@ -319,9 +320,26 @@ export default function ChatsPage() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
+  // Group creation states
+  const [isGroupCreationMode, setIsGroupCreationMode] = useState(false);
+  const [selectedGroupMembers, setSelectedGroupMembers] = useState([]);
+  const [groupName, setGroupName] = useState("");
+  const [groupDescription, setGroupDescription] = useState("");
+  const [groupCreationStep, setGroupCreationStep] = useState(1); // 1 = select members, 2 = name & details
+
   const { isDarkMode, toggleTheme } = useTheme();
 
   const [chats, setChats] = useState(() => INITIAL_CHATS);
+  const [customListsState, setCustomListsState] = useState({});
+  const [showCreateListModal, setShowCreateListModal] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [newListChats, setNewListChats] = useState([]);
+
+  useEffect(() => {
+    const lists = JSON.parse(localStorage.getItem("customLists") || "{}");
+    setCustomListsState(lists);
+  }, []);
+
   const [chatContextMenu, setChatContextMenu] = useState(null);
   const [longPressTimeout, setLongPressTimeout] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
@@ -645,11 +663,13 @@ export default function ChatsPage() {
                   otherParticipant = chat.participants[0];
                 }
                 const isSelf = otherParticipant?._id === currentUserId;
-                const displayName = isSelf ? "You" : (otherParticipant?.displayName || otherParticipant?.phoneNumber || "Unknown User");
+                const displayName = chat.isGroup 
+                  ? chat.name 
+                  : (isSelf ? "You" : (otherParticipant?.displayName || otherParticipant?.phoneNumber || "Unknown User"));
                 return {
                   id: chat._id,
                   name: displayName,
-                  avatar: otherParticipant?.avatarUrl || null,
+                  avatar: chat.isGroup ? chat.avatarUrl : (otherParticipant?.avatarUrl || null),
                   avatarText: displayName.charAt(0).toUpperCase(),
                   avatarBg: "bg-teal-50 text-teal-600 font-bold border border-teal-100",
                   time: chat.lastMessage && chat.lastMessage.timestamp 
@@ -730,6 +750,38 @@ export default function ChatsPage() {
     }
   };
 
+  const toggleGroupMember = (contactId) => {
+    setSelectedGroupMembers(prev => {
+      if (prev.includes(contactId)) {
+        return prev.filter(id => id !== contactId);
+      } else {
+        return [...prev, contactId];
+      }
+    });
+  };
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim()) {
+      alert("Please enter a group name");
+      return;
+    }
+    try {
+      const res = await createGroup(groupName.trim(), selectedGroupMembers);
+      if (res && res.success && res.data) {
+        setShowSelectContact(false);
+        setIsGroupCreationMode(false);
+        setSelectedGroupMembers([]);
+        setGroupName("");
+        setGroupDescription("");
+        setGroupCreationStep(1);
+        router.push(`/chats/${res.data._id}`);
+      }
+    } catch (err) {
+      console.error("Failed to create group:", err);
+      alert(err.message || "Failed to create group");
+    }
+  };
+
   useEffect(() => {
     // Redirect to login if not authenticated
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -758,15 +810,17 @@ export default function ChatsPage() {
               otherParticipant = chat.participants[0];
             }
             const isSelf = otherParticipant?._id === currentUserId;
-            const displayName = isSelf ? "You" : (otherParticipant?.displayName || otherParticipant?.phoneNumber || "Unknown User");
+            const displayName = chat.isGroup 
+              ? chat.name 
+              : (isSelf ? "You" : (otherParticipant?.displayName || otherParticipant?.phoneNumber || "Unknown User"));
             const isPinned = pinnedIds.includes(chat._id);
             const isFavourite = favIds.includes(chat._id);
             return {
               id: chat._id,
               name: displayName,
               otherParticipantId: otherParticipant?._id || null,
-              avatar: otherParticipant?.avatarUrl || null,
-              avatarText: displayName.charAt(0).toUpperCase(),
+              avatar: chat.isGroup ? chat.avatarUrl : (otherParticipant?.avatarUrl || null),
+              avatarText: displayName ? displayName.charAt(0).toUpperCase() : "G",
               avatarBg: "bg-teal-50 text-teal-600 font-bold border border-teal-100",
               time: chat.lastMessage && chat.lastMessage.timestamp 
                 ? new Date(chat.lastMessage.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) 
@@ -1118,6 +1172,9 @@ export default function ChatsPage() {
         if (activeFilter === "unread") return chat.unread > 0;
         if (activeFilter === "favourites") return chat.isFavourite;
         if (activeFilter === "groups") return chat.isGroup;
+        if (customListsState[activeFilter]) {
+          return customListsState[activeFilter].includes(chat.id);
+        }
         return true;
       });
     return [...list].sort((a, b) => {
@@ -1125,7 +1182,7 @@ export default function ChatsPage() {
       if (!a.isPinned && b.isPinned) return 1;
       return 0;
     });
-  }, [chats, activeFilter, searchQuery]);
+  }, [chats, activeFilter, searchQuery, customListsState]);
 
   const lockedChats = useMemo(() => {
     return chats.filter(chat => chat.isLocked);
@@ -1145,135 +1202,286 @@ export default function ChatsPage() {
       } catch (_) {}
     }
 
-    return (
-      <div className="w-full bg-white text-[#1c2e35] antialiased min-h-screen flex flex-col font-sans select-none relative">
-        {/* Header */}
-        <header className="px-4 py-3 flex justify-between items-center sticky top-0 bg-white z-40 border-b border-zinc-50">
-          <div className="flex items-center">
+    if (isGroupCreationMode && groupCreationStep === 2) {
+      return (
+        <div className="w-full bg-white dark:bg-[#111b21] text-[#1c2e35] dark:text-[#e9edef] antialiased min-h-screen flex flex-col font-sans select-none relative">
+          <header className="px-4 py-3 flex items-center sticky top-0 bg-white dark:bg-[#111b21] z-40 border-b border-zinc-100 dark:border-zinc-800">
             <button
-              onClick={() => {
-                setShowSelectContact(false);
-                setSearchQuery("");
-              }}
-              aria-label="Back"
-              className="p-1.5 hover:bg-zinc-100 rounded-full active:scale-95 transition-transform shrink-0"
+              onClick={() => setGroupCreationStep(1)}
+              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full active:scale-95 transition-transform shrink-0"
             >
               <span className="material-symbols-outlined text-[24px]">arrow_back</span>
             </button>
             <div className="flex flex-col ml-4 leading-tight">
-              <span className="text-[17px] font-semibold text-[#1c2e35] tracking-wide">
-                Select contact
+              <span className="text-[17px] font-semibold tracking-wide">New group</span>
+              <span className="text-[11.5px] text-[#667781] dark:text-[#8696a0] font-medium mt-0.5">Add subject</span>
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Group icon placeholder */}
+            <div className="flex justify-center py-4">
+              <div className="w-24 h-24 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-sm relative group cursor-pointer hover:opacity-90">
+                <span className="material-symbols-outlined text-[48px] text-zinc-400 dark:text-zinc-500">group</span>
+                <div className="absolute inset-0 bg-black/40 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="material-symbols-outlined text-white text-[24px]">camera_alt</span>
+                  <span className="text-white text-[9px] uppercase font-bold mt-1">Add Photo</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Inputs */}
+            <div className="space-y-4">
+              <div className="flex flex-col">
+                <label className="text-[13px] font-bold text-[#00a884] mb-1">Group Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter group name (required)"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  className="w-full bg-transparent border-b-2 border-zinc-200 dark:border-zinc-700 focus:border-[#00a884] dark:focus:border-[#00a884] py-2 outline-none transition-colors text-[16px]"
+                  maxLength={100}
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-[13px] font-bold text-[#00a884] mb-1">Description (optional)</label>
+                <textarea
+                  placeholder="Enter group description"
+                  value={groupDescription}
+                  onChange={(e) => setGroupDescription(e.target.value)}
+                  className="w-full bg-transparent border-b-2 border-zinc-200 dark:border-zinc-700 focus:border-[#00a884] dark:focus:border-[#00a884] py-2 outline-none transition-colors text-[15px] resize-none h-20"
+                />
+              </div>
+            </div>
+
+            {/* Members chips grid */}
+            <div>
+              <span className="text-[13px] font-bold text-[#667781] dark:text-[#8696a0] block mb-3">
+                Participants: {selectedGroupMembers.length}
               </span>
-              <span className="text-[11.5px] text-[#667781] font-medium mt-0.5">
-                {loadingContacts ? "Loading..." : `${contacts.length} contacts`}
+              <div className="grid grid-cols-4 gap-4">
+                {selectedGroupMembers.map(id => {
+                  const contact = contacts.find(c => c.id === id);
+                  if (!contact) return null;
+                  return (
+                    <div key={id} className="flex flex-col items-center text-center">
+                      <div className="relative">
+                        {renderAvatar(contact.avatarUrl, contact.displayName, "w-[44px] h-[44px]", "text-[20px]")}
+                      </div>
+                      <span className="text-[11.5px] text-[#1c2e35] dark:text-[#e9edef] truncate w-full mt-1.5">
+                        {contact.displayName}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </main>
+
+          {/* Floating Confirm Action Button */}
+          <button
+            onClick={handleCreateGroup}
+            className="absolute bottom-6 right-6 w-[56px] h-[56px] bg-[#00a884] text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-all cursor-pointer z-50 hover:bg-[#008f72]"
+          >
+            <span className="material-symbols-outlined text-[26px]">check</span>
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-full bg-white dark:bg-[#111b21] text-[#1c2e35] dark:text-[#e9edef] antialiased min-h-screen flex flex-col font-sans select-none relative">
+        {/* Header */}
+        <header className="px-4 py-3 flex justify-between items-center sticky top-0 bg-white dark:bg-[#111b21] z-40 border-b border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center">
+            <button
+              onClick={() => {
+                if (isGroupCreationMode) {
+                  setIsGroupCreationMode(false);
+                  setSelectedGroupMembers([]);
+                } else {
+                  setShowSelectContact(false);
+                  setSearchQuery("");
+                }
+              }}
+              aria-label="Back"
+              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full active:scale-95 transition-transform shrink-0"
+            >
+              <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+            </button>
+            <div className="flex flex-col ml-4 leading-tight">
+              <span className="text-[17px] font-semibold tracking-wide">
+                {isGroupCreationMode ? "New group" : "Select contact"}
+              </span>
+              <span className="text-[11.5px] text-[#667781] dark:text-[#8696a0] font-medium mt-0.5">
+                {isGroupCreationMode 
+                  ? `${selectedGroupMembers.length} selected`
+                  : (loadingContacts ? "Loading..." : `${contacts.length} contacts`)}
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-3 text-[#54656f]">
-            <button aria-label="Search" className="p-1.5 hover:bg-zinc-100 rounded-full active:scale-95">
+          <div className="flex items-center gap-3 text-[#54656f] dark:text-[#8696a0]">
+            <button aria-label="Search" className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full active:scale-95">
               <span className="material-symbols-outlined text-[24px]">search</span>
             </button>
-            <button aria-label="More" className="p-1.5 hover:bg-zinc-100 rounded-full active:scale-95">
+            <button aria-label="More" className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full active:scale-95">
               <span className="material-symbols-outlined text-[24px]">more_vert</span>
             </button>
           </div>
         </header>
 
+        {/* Selected group members scroll area (horizontal) */}
+        {isGroupCreationMode && selectedGroupMembers.length > 0 && (
+          <div className="px-4 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex gap-3 overflow-x-auto shrink-0 scrollbar-none">
+            {selectedGroupMembers.map(id => {
+              const contact = contacts.find(c => c.id === id);
+              if (!contact) return null;
+              return (
+                <div key={id} className="flex flex-col items-center shrink-0 relative w-12 py-1">
+                  <div className="relative">
+                    {renderAvatar(contact.avatarUrl, contact.displayName, "w-[40px] h-[40px]", "text-[18px]")}
+                    <button
+                      onClick={() => toggleGroupMember(id)}
+                      className="absolute -top-1 -right-1 bg-zinc-400 text-white rounded-full w-4 h-4 flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[10px] font-bold">close</span>
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-[#667781] dark:text-[#8696a0] truncate w-full text-center mt-1">
+                    {contact.displayName}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* List scroll container */}
-        <main className="flex-1 overflow-y-auto px-4 py-2 space-y-1">
-          {/* Option: New Group */}
-          <div className="flex items-center py-3.5 cursor-pointer hover:bg-zinc-50 active:bg-zinc-100 transition-colors rounded-lg">
-            <div className="w-[44px] h-[44px] rounded-full bg-[#00a884] text-white flex items-center justify-center shrink-0 mr-4">
-              <span className="material-symbols-outlined text-[22px]">group_add</span>
-            </div>
-            <span className="text-[15.5px] font-bold text-[#1c2e35]">New group</span>
-          </div>
+        <main className="flex-1 overflow-y-auto px-4 py-2 space-y-1 relative">
+          {!isGroupCreationMode && (
+            <>
+              {/* Option: New Group */}
+              <div 
+                onClick={() => {
+                  setIsGroupCreationMode(true);
+                  setGroupCreationStep(1);
+                }}
+                className="flex items-center py-3.5 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors rounded-lg"
+              >
+                <div className="w-[44px] h-[44px] rounded-full bg-[#00a884] text-white flex items-center justify-center shrink-0 mr-4">
+                  <span className="material-symbols-outlined text-[22px]">group_add</span>
+                </div>
+                <span className="text-[15.5px] font-bold">New group</span>
+              </div>
 
-          {/* Option: New Contact */}
-          <div
-            onClick={async () => {
-              const phone = prompt("Enter phone number to add:");
-              if (!phone) return;
-              const name = prompt("Enter custom name (optional):") || "";
-              try {
-                const res = await addContact(phone.trim(), name.trim());
-                if (res && res.success) {
-                  alert("Contact added successfully!");
-                  const updatedRes = await getContacts();
-                  if (updatedRes && updatedRes.data && updatedRes.data.contacts) {
-                    setContacts(updatedRes.data.contacts);
+              {/* Option: New Contact */}
+              <div
+                onClick={async () => {
+                  const phone = prompt("Enter phone number to add:");
+                  if (!phone) return;
+                  const name = prompt("Enter custom name (optional):") || "";
+                  try {
+                    const res = await addContact(phone.trim(), name.trim());
+                    if (res && res.success) {
+                      showToast("Contact added successfully!");
+                      const updatedRes = await getContacts();
+                      if (updatedRes && updatedRes.data && updatedRes.data.contacts) {
+                        setContacts(updatedRes.data.contacts);
+                      }
+                    }
+                  } catch (err) {
+                    showToast(err.message || "Failed to add contact");
                   }
-                }
-              } catch (err) {
-                alert(err.message || "Failed to add contact");
-              }
-            }}
-            className="flex items-center justify-between py-3.5 cursor-pointer hover:bg-zinc-50 active:bg-zinc-100 transition-colors rounded-lg"
-          >
-            <div className="flex items-center">
-              <div className="w-[44px] h-[44px] rounded-full bg-[#00a884] text-white flex items-center justify-center shrink-0 mr-4">
-                <span className="material-symbols-outlined text-[22px]">person_add</span>
+                }}
+                className="flex items-center justify-between py-3.5 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors rounded-lg"
+              >
+                <div className="flex items-center">
+                  <div className="w-[44px] h-[44px] rounded-full bg-[#00a884] text-white flex items-center justify-center shrink-0 mr-4">
+                    <span className="material-symbols-outlined text-[22px]">person_add</span>
+                  </div>
+                  <span className="text-[15.5px] font-bold">New contact</span>
+                </div>
+                <span className="material-symbols-outlined text-[22px] text-[#667781] dark:text-[#8696a0] mr-1">qr_code_2</span>
               </div>
-              <span className="text-[15.5px] font-bold text-[#1c2e35]">New contact</span>
-            </div>
-            <span className="material-symbols-outlined text-[22px] text-[#667781] mr-1">qr_code_2</span>
-          </div>
 
-          {/* Option: New Community */}
-          <div className="flex items-center py-3.5 cursor-pointer hover:bg-zinc-50 active:bg-zinc-100 transition-colors rounded-lg">
-            <div className="w-[44px] h-[44px] rounded-full bg-[#00a884] text-white flex items-center justify-center shrink-0 mr-4">
-              <span className="material-symbols-outlined text-[22px] fill">groups</span>
-            </div>
-            <span className="text-[15.5px] font-bold text-[#1c2e35]">New community</span>
-          </div>
+              {/* Option: New Community */}
+              <div className="flex items-center py-3.5 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors rounded-lg">
+                <div className="w-[44px] h-[44px] rounded-full bg-[#00a884] text-white flex items-center justify-center shrink-0 mr-4">
+                  <span className="material-symbols-outlined text-[22px] fill">groups</span>
+                </div>
+                <span className="text-[15.5px] font-bold">New community</span>
+              </div>
 
-          {/* Option: Message yourself */}
-          {currentUser && (
-            <div
-              onClick={() => handleContactClick(currentUser.id)}
-              className="flex items-center gap-3.5 py-3 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
-            >
-              <div className="w-[48px] h-[48px] rounded-full flex items-center justify-center shrink-0 bg-[#e6f5ef] text-[#0f8b5d] border border-teal-100 font-bold">
-                <span className="material-symbols-outlined text-[22px] fill">person</span>
-              </div>
-              <div className="flex-grow min-w-0 border-b border-zinc-100 pb-3 flex flex-col justify-center">
-                <span className="text-[15.5px] font-bold text-[#1c2e35] truncate leading-snug">Message yourself</span>
-                <span className="text-[12.5px] text-[#667781] truncate mt-0.5">You</span>
-              </div>
-            </div>
+              {/* Option: Message yourself */}
+              {currentUser && (
+                <div
+                  onClick={() => handleContactClick(currentUser.id)}
+                  className="flex items-center gap-3.5 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors cursor-pointer"
+                >
+                  <div className="w-[48px] h-[48px] rounded-full flex items-center justify-center shrink-0 bg-[#e6f5ef] dark:bg-[#e6f5ef]/10 text-[#0f8b5d] dark:text-[#00a884] border border-teal-100 dark:border-teal-900/30 font-bold">
+                    <span className="material-symbols-outlined text-[22px] fill">person</span>
+                  </div>
+                  <div className="flex-grow min-w-0 border-b border-zinc-100 dark:border-zinc-800 pb-3 flex flex-col justify-center">
+                    <span className="text-[15.5px] font-bold truncate leading-snug">Message yourself</span>
+                    <span className="text-[12.5px] text-[#667781] dark:text-[#8696a0] truncate mt-0.5">You</span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Section: Contacts on AppMetaChat */}
-          <div className="text-[13.5px] font-bold text-[#667781] pt-4 pb-2">
-            Contacts on AppMetaChat
+          <div className="text-[13.5px] font-bold text-[#667781] dark:text-[#8696a0] pt-4 pb-2">
+            {isGroupCreationMode ? "Select participants" : "Contacts on AppMetaChat"}
           </div>
           {loadingContacts ? (
             <div className="flex justify-center py-10">
               <div className="w-6 h-6 border-2 border-t-transparent border-[#00a884] rounded-full animate-spin"></div>
             </div>
           ) : contacts.length === 0 ? (
-            <div className="text-center text-zinc-500 py-10 text-[14px]">
+            <div className="text-center text-zinc-500 dark:text-[#8696a0] py-10 text-[14px]">
               No contacts found. Add some contacts to start chatting!
             </div>
           ) : (
-            <div className="flex flex-col pb-10">
-              {contacts.map((c) => (
-                <div
-                  key={c.id}
-                  onClick={() => handleContactClick(c.id)}
-                  className="flex items-center gap-3.5 py-3 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
-                >
-                  {renderAvatar(c.avatarUrl, c.displayName, "w-[48px] h-[48px]", "text-[22px]")}
+            <div className="flex flex-col pb-20">
+              {contacts.map((c) => {
+                const isSelected = selectedGroupMembers.includes(c.id);
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => isGroupCreationMode ? toggleGroupMember(c.id) : handleContactClick(c.id)}
+                    className="flex items-center gap-3.5 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors cursor-pointer"
+                  >
+                    <div className="relative shrink-0">
+                      {renderAvatar(c.avatarUrl, c.displayName, "w-[48px] h-[48px]", "text-[22px]")}
+                      {isGroupCreationMode && isSelected && (
+                        <div className="absolute -bottom-1 -right-1 bg-[#00a884] text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-white dark:border-[#111b21]">
+                          <span className="material-symbols-outlined text-[13px] font-bold">check</span>
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="flex-grow min-w-0 border-b border-zinc-100 pb-3 flex flex-col justify-center">
-                    <span className="text-[15.5px] font-bold text-[#1c2e35] truncate leading-snug">{c.displayName}</span>
-                    <span className="text-[12.5px] text-[#667781] truncate mt-0.5">{c.about || "Available"}</span>
+                    <div className="flex-grow min-w-0 border-b border-zinc-100 dark:border-zinc-800 pb-3 flex flex-col justify-center">
+                      <span className="text-[15.5px] font-bold truncate leading-snug">{c.displayName}</span>
+                      <span className="text-[12.5px] text-[#667781] dark:text-[#8696a0] truncate mt-0.5">{c.about || "Available"}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </main>
+
+        {/* Floating Action Button for Group Step 1 -> Step 2 */}
+        {isGroupCreationMode && selectedGroupMembers.length > 0 && (
+          <button
+            onClick={() => setGroupCreationStep(2)}
+            className="absolute bottom-6 right-6 w-[56px] h-[56px] bg-[#00a884] text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-all cursor-pointer z-50 hover:bg-[#008f72]"
+          >
+            <span className="material-symbols-outlined text-[26px]">arrow_forward</span>
+          </button>
+        )}
       </div>
     );
   }
@@ -1575,7 +1783,42 @@ export default function ChatsPage() {
             </span>
           )}
         </button>
-        <button className="w-8 h-8 flex items-center justify-center bg-[#f0f2f5] text-[#54656f] rounded-full shrink-0 active:scale-95 cursor-pointer">
+
+        {Object.keys(customListsState).map((listName) => (
+          <button
+            key={listName}
+            onClick={() => setActiveFilter(listName)}
+            className={`px-3.5 py-1.5 rounded-full shrink-0 active:scale-95 transition-all text-[13.5px] cursor-pointer flex items-center gap-1.5 ${
+              activeFilter === listName ? "bg-[#e6f5ef] text-[#0f8b5d] font-semibold" : "bg-[#f0f2f5] text-[#54656f] font-medium hover:bg-zinc-200"
+            }`}
+          >
+            <span>{listName}</span>
+            {activeFilter === listName && (
+              <span 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const confirmDelete = confirm(`Are you sure you want to delete the list "${listName}"?`);
+                  if (confirmDelete) {
+                    const copy = { ...customListsState };
+                    delete copy[listName];
+                    localStorage.setItem("customLists", JSON.stringify(copy));
+                    setActiveFilter("all");
+                    setCustomListsState(copy);
+                    showToast(`List "${listName}" deleted`);
+                  }
+                }}
+                className="material-symbols-outlined text-[14px] hover:text-red-500 font-bold ml-0.5"
+              >
+                close
+              </span>
+            )}
+          </button>
+        ))}
+
+        <button 
+          onClick={() => setShowCreateListModal(true)}
+          className="w-8 h-8 flex items-center justify-center bg-[#f0f2f5] text-[#54656f] rounded-full shrink-0 active:scale-95 cursor-pointer hover:bg-zinc-200"
+        >
           <span className="material-symbols-outlined text-[18px]">add</span>
         </button>
       </div>
@@ -1719,7 +1962,7 @@ export default function ChatsPage() {
       </main>
 
       {/* Floating Action Button */}
-      <div className="absolute bottom-24 right-4 z-40">
+      <div className="fixed bottom-24 right-4 z-40">
         <button
           onClick={() => setShowSelectContact(true)}
           aria-label="New Message"
@@ -2320,6 +2563,106 @@ export default function ChatsPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Create List Modal */}
+      {showCreateListModal && (
+        <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-6 select-none animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-[340px] overflow-hidden flex flex-col font-sans border border-zinc-150 animate-in zoom-in-95 duration-150 text-[#111b21]">
+            {/* Header */}
+            <div className="bg-[#00a884] text-white px-5 py-4 flex items-center justify-between">
+              <span className="text-[17px] font-semibold">New List</span>
+              <button 
+                onClick={() => setShowCreateListModal(false)}
+                className="text-white hover:bg-[#009071] p-1 rounded-full active:scale-90"
+              >
+                <span className="material-symbols-outlined text-[20px] font-bold">close</span>
+              </button>
+            </div>
+
+            {/* Input list name */}
+            <div className="px-5 pt-4">
+              <label className="text-[13px] font-semibold text-zinc-500 block mb-1.5">List Name</label>
+              <input
+                type="text"
+                value={newListName}
+                onChange={(e) => setNewListName(e.target.value)}
+                placeholder="e.g. Work, Friends"
+                className="w-full bg-zinc-50 border border-zinc-200 focus:border-[#00a884] focus:bg-white rounded-xl px-3 py-2 text-[14px] outline-none transition-colors"
+                autoFocus
+              />
+            </div>
+
+            {/* Select contacts checkboxes */}
+            <div className="px-5 py-4 flex-1 overflow-y-auto max-h-[220px]">
+              <label className="text-[13px] font-semibold text-zinc-500 block mb-2">Select Chats ({newListChats.length})</label>
+              <div className="space-y-2">
+                {chats.filter(c => !c.isLocked && !c.isArchived).map((chat) => {
+                  const isChecked = newListChats.includes(chat.id);
+                  return (
+                    <div 
+                      key={chat.id}
+                      onClick={() => {
+                        setNewListChats(prev => prev.includes(chat.id) ? prev.filter(id => id !== chat.id) : [...prev, chat.id]);
+                      }}
+                      className="flex items-center gap-3 py-1.5 cursor-pointer hover:bg-zinc-50 rounded-lg px-2 active:bg-zinc-100 transition-colors"
+                    >
+                      <div className={`w-[18px] h-[18px] rounded border flex items-center justify-center transition-colors ${
+                        isChecked ? "bg-[#00a884] border-[#00a884]" : "border-zinc-350"
+                      }`}>
+                        {isChecked && <span className="material-symbols-outlined text-white text-[11px] font-bold">check</span>}
+                      </div>
+                      <span className="text-[14.5px] font-medium text-[#111b21] truncate">{chat.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-zinc-50 border-t border-zinc-100 px-5 py-3.5 flex justify-end gap-3 select-none">
+              <button 
+                onClick={() => setShowCreateListModal(false)}
+                className="px-4 py-2 rounded-full hover:bg-zinc-200 text-zinc-600 font-semibold text-[14px] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  const nameClean = newListName.trim();
+                  if (!nameClean) {
+                    showToast("Please enter a list name");
+                    return;
+                  }
+                  if (newListChats.length === 0) {
+                    showToast("Please select at least one chat");
+                    return;
+                  }
+                  const lists = JSON.parse(localStorage.getItem("customLists") || "{}");
+                  lists[nameClean] = newListChats;
+                  localStorage.setItem("customLists", JSON.stringify(lists));
+                  setCustomListsState(lists);
+                  setShowCreateListModal(false);
+                  setNewListName("");
+                  setNewListChats([]);
+                  setActiveFilter(nameClean);
+                  showToast(`List "${nameClean}" created!`);
+                }}
+                className="bg-[#00a884] hover:bg-[#009071] text-white px-5 py-2 rounded-full font-bold text-[14px] transition-all cursor-pointer active:scale-95"
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-[#111b21] dark:bg-[#202c33] text-white dark:text-[#e9edef] px-5 py-3 rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.15)] text-[14.5px] font-semibold tracking-wide animate-in fade-in slide-in-from-bottom-4 duration-300 flex items-center gap-2 border border-zinc-200/10 select-none">
+          <span className="material-symbols-outlined text-[18px] text-[#00a884]">info</span>
+          <span>{toastMessage}</span>
         </div>
       )}
     </div>

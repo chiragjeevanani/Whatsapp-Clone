@@ -16,7 +16,7 @@ const getConversationDetails = asyncHandler(async (req, res) => {
   const conversation = await chatService.getConversationDetails(conversationId, userId);
   
   const presence = require("../../../shared/redis/presence");
-  const conversationObj = conversation.toObject();
+  const conversationObj = conversation.toObject({ flattenMaps: true });
   
   if (conversationObj && conversationObj.participants) {
     conversationObj.participants = await Promise.all(
@@ -82,7 +82,7 @@ const sendMessage = asyncHandler(async (req, res) => {
   const io = req.app.get("io");
   let status = "sent";
 
-  if (io) {
+  if (io && !conversationDetails.isGroup) {
     const recipient = conversationDetails.participants.find(p => p._id.toString() !== userId.toString());
     if (recipient) {
       const recipientId = recipient._id.toString();
@@ -107,38 +107,64 @@ const sendMessage = asyncHandler(async (req, res) => {
     await message.save();
   }
 
-  // Send push notification if message is not read immediately
-  const recipient = conversationDetails?.participants?.find(p => p._id.toString() !== userId.toString());
-  if (status !== "read" && recipient && recipient.fcmTokens && recipient.fcmTokens.length > 0) {
-    const rawTokens = recipient.fcmTokens.map(item => item.token).filter(Boolean);
-    if (rawTokens.length > 0) {
-      const { sendPushNotification } = require("../../../shared/utils/firebaseService");
-      const sender = conversationDetails.participants.find(p => p._id.toString() === userId.toString()) || {};
-      const senderName = sender.displayName || sender.phoneNumber || "New Message";
-      
-      let notificationBody = message.text;
-      if (message.type === "voice") {
-        notificationBody = "🎤 Voice Message";
-      } else if (message.type === "image") {
-        notificationBody = "📷 Photo";
-      } else if (message.type === "audio") {
-        notificationBody = "🎵 Audio";
-      } else if (message.type === "video") {
-        notificationBody = "🎥 Video";
-      } else if (message.type === "document") {
-        notificationBody = "📄 Document";
-      }
+  // Send push notification
+  const { sendPushNotification } = require("../../../shared/utils/firebaseService");
+  const sender = conversationDetails.participants.find(p => p._id.toString() === userId.toString()) || {};
+  const senderName = sender.displayName || sender.phoneNumber || "New Message";
+  
+  let notificationTitle = senderName;
+  if (conversationDetails.isGroup) {
+    notificationTitle = `${senderName} @ ${conversationDetails.name}`;
+  }
 
-      sendPushNotification(
-        rawTokens,
-        senderName,
-        notificationBody || "New message received",
-        {
-          conversationId,
-          messageId: message._id.toString(),
-          senderId: userId
+  let notificationBody = message.text;
+  if (message.type === "voice") {
+    notificationBody = "🎤 Voice Message";
+  } else if (message.type === "image") {
+    notificationBody = "📷 Photo";
+  } else if (message.type === "audio") {
+    notificationBody = "🎵 Audio";
+  } else if (message.type === "video") {
+    notificationBody = "🎥 Video";
+  } else if (message.type === "document") {
+    notificationBody = "📄 Document";
+  }
+
+  if (conversationDetails.isGroup) {
+    const offlineParticipants = conversationDetails.participants.filter(p => p._id.toString() !== userId.toString());
+    for (const p of offlineParticipants) {
+      if (p.fcmTokens && p.fcmTokens.length > 0) {
+        const rawTokens = p.fcmTokens.map(item => item.token).filter(Boolean);
+        if (rawTokens.length > 0) {
+          sendPushNotification(
+            rawTokens,
+            notificationTitle,
+            notificationBody || "New message received",
+            {
+              conversationId,
+              messageId: message._id.toString(),
+              senderId: userId
+            }
+          ).catch(err => logger.error(`[FCM] Push send error: ${err.message}`));
         }
-      ).catch(err => logger.error(`[FCM] Push send error: ${err.message}`));
+      }
+    }
+  } else {
+    const recipient = conversationDetails?.participants?.find(p => p._id.toString() !== userId.toString());
+    if (status !== "read" && recipient && recipient.fcmTokens && recipient.fcmTokens.length > 0) {
+      const rawTokens = recipient.fcmTokens.map(item => item.token).filter(Boolean);
+      if (rawTokens.length > 0) {
+        sendPushNotification(
+          rawTokens,
+          notificationTitle,
+          notificationBody || "New message received",
+          {
+            conversationId,
+            messageId: message._id.toString(),
+            senderId: userId
+          }
+        ).catch(err => logger.error(`[FCM] Push send error: ${err.message}`));
+      }
     }
   }
 
@@ -287,6 +313,116 @@ const clearConversation = asyncHandler(async (req, res) => {
   sendResponse(res, 200, result, "Chat cleared successfully");
 });
 
+const createGroupConversation = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const { name, participants, avatarUrl } = require("../validators/chat").createGroupSchema.parse(req.body);
+  const conversation = await chatService.createGroupConversation(userId, name, participants, avatarUrl);
+  
+  // Notify participants via WebSocket
+  const io = req.app.get("io");
+  if (io) {
+    conversation.participants.forEach((p) => {
+      io.to(`user:${p._id.toString()}`).emit("group_created", conversation);
+    });
+  }
+
+  sendResponse(res, 201, conversation, "Group conversation created successfully");
+});
+
+const addGroupMembers = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const conversationId = req.params.id;
+  const { memberIds } = req.body;
+  
+  const conversation = await chatService.addGroupMembers(conversationId, userId, memberIds);
+  
+  const io = req.app.get("io");
+  if (io) {
+    io.to(`conversation:${conversationId}`).emit("group_updated", conversation);
+    memberIds.forEach((id) => {
+      io.to(`user:${id}`).emit("group_created", conversation);
+    });
+  }
+
+  sendResponse(res, 200, conversation, "Members added successfully");
+});
+
+const removeGroupMember = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const conversationId = req.params.id;
+  const targetUserId = req.params.userId;
+  
+  const conversation = await chatService.removeGroupMember(conversationId, userId, targetUserId);
+  
+  const io = req.app.get("io");
+  if (io) {
+    io.to(`conversation:${conversationId}`).emit("group_updated", conversation);
+    io.to(`user:${targetUserId}`).emit("removed_from_group", { conversationId });
+  }
+
+  sendResponse(res, 200, conversation, "Member removed successfully");
+});
+
+const leaveGroup = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const conversationId = req.params.id;
+  
+  const conversation = await chatService.leaveGroup(conversationId, userId);
+  
+  const io = req.app.get("io");
+  if (io) {
+    io.to(`conversation:${conversationId}`).emit("group_updated", conversation);
+    io.to(`user:${userId}`).emit("removed_from_group", { conversationId });
+  }
+
+  sendResponse(res, 200, conversation, "Left group successfully");
+});
+
+const updateGroupInfo = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const conversationId = req.params.id;
+  const updates = req.body;
+  
+  const conversation = await chatService.updateGroupInfo(conversationId, userId, updates);
+  
+  const io = req.app.get("io");
+  if (io) {
+    io.to(`conversation:${conversationId}`).emit("group_updated", conversation);
+  }
+
+  sendResponse(res, 200, conversation, "Group info updated successfully");
+});
+
+const makeAdmin = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const conversationId = req.params.id;
+  const targetUserId = req.params.userId;
+  
+  const conversation = await chatService.makeAdmin(conversationId, userId, targetUserId);
+  
+  const io = req.app.get("io");
+  if (io) {
+    io.to(`conversation:${conversationId}`).emit("group_updated", conversation);
+  }
+
+  sendResponse(res, 200, conversation, "Promoted member to admin successfully");
+});
+
+const removeAdmin = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const conversationId = req.params.id;
+  const targetUserId = req.params.userId;
+  
+  const conversation = await chatService.removeAdmin(conversationId, userId, targetUserId);
+  
+  const io = req.app.get("io");
+  if (io) {
+    io.to(`conversation:${conversationId}`).emit("group_updated", conversation);
+  }
+
+  sendResponse(res, 200, conversation, "Demoted admin successfully");
+});
+
 module.exports = {
   getConversations,
   getConversationDetails,
@@ -301,4 +437,11 @@ module.exports = {
   lockConversation,
   favouriteConversation,
   clearConversation,
+  createGroupConversation,
+  addGroupMembers,
+  removeGroupMember,
+  leaveGroup,
+  updateGroupInfo,
+  makeAdmin,
+  removeAdmin,
 };

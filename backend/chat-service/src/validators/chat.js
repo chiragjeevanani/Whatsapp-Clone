@@ -6,7 +6,7 @@ const createConversationSchema = z.object({
 
 const sendMessageSchema = z.object({
   text: z.string().optional().default(""),
-  type: z.enum(["text", "image", "video", "audio", "voice", "document", "sticker", "gif", "location", "contact"]).optional().default("text"),
+  type: z.enum(["text", "image", "video", "audio", "voice", "document", "sticker", "gif", "location", "contact", "system"]).optional().default("text"),
   media: z.string().optional().default(""),
   thumbnail: z.string().optional().default(""),
   fileSize: z.number().optional().default(0),
@@ -15,7 +15,14 @@ const sendMessageSchema = z.object({
   forwarded: z.boolean().optional().default(false),
 });
 
+const createGroupSchema = z.object({
+  name: z.string().min(1, "Group name is required").max(100, "Group name must be less than 100 characters"),
+  participants: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid participant ID format")).min(1, "At least one participant is required"),
+  avatarUrl: z.string().optional().default(""),
+});
+
 module.exports = {
   createConversationSchema,
   sendMessageSchema,
+  createGroupSchema,
 };

@@ -20,7 +20,7 @@ const messageSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["text", "image", "video", "audio", "voice", "document", "sticker", "gif", "location", "contact"],
+      enum: ["text", "image", "video", "audio", "voice", "document", "sticker", "gif", "location", "contact", "system"],
       default: "text",
     },
     text: {

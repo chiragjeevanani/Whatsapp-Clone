@@ -76,6 +76,24 @@ const conversationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    groupDescription: {
+      type: String,
+      default: "",
+    },
+    admins: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    onlyAdminsCanSend: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
@@ -83,5 +101,6 @@ const conversationSchema = new mongoose.Schema(
 );
 
 conversationSchema.index({ participants: 1 });
+conversationSchema.index({ lastMessageAt: -1 });
 
 module.exports = mongoose.model("Conversation", conversationSchema);

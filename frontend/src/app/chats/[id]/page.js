@@ -8,6 +8,8 @@ import { editMessage } from "@/services/chat/editMessage";
 import { deleteMessage } from "@/services/chat/deleteMessage";
 import { getConversationDetails, getConversations } from "@/services/chat/conversations";
 import { useSocket } from "@/contexts/SocketContext";
+import { getUserProfileById } from "@/services/user/profile";
+import { unblockUser } from "@/services/user/contacts";
 
 const getAvatarUrl = (path) => {
   if (!path) return null;
@@ -21,6 +23,69 @@ const getMediaUrl = (path) => {
   if (path.startsWith("http") || path.startsWith("data:")) return path;
   const gatewayBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1").replace("/api/v1", "");
   return `${gatewayBase}${path}`;
+};
+
+const getSenderIdStr = (senderIdObj) => {
+  if (!senderIdObj) return "";
+  return typeof senderIdObj === "object" ? (senderIdObj._id || senderIdObj.id || "").toString() : senderIdObj.toString();
+};
+
+const SENDER_COLORS = [
+  "text-[#027eb5]",
+  "text-[#d91a5f]",
+  "text-[#10b981]",
+  "text-[#f59e0b]",
+  "text-[#8b5cf6]",
+  "text-[#ec4899]",
+  "text-[#3b82f6]",
+  "text-[#f43f5e]",
+];
+
+const getSenderColorClass = (senderId, participants = []) => {
+  if (!senderId) return SENDER_COLORS[0];
+  const idx = participants.findIndex(p => (p._id || p.id || "").toString() === senderId.toString());
+  if (idx === -1) {
+    let hash = 0;
+    for (let i = 0; i < senderId.length; i++) {
+      hash = senderId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
+  }
+  return SENDER_COLORS[idx % SENDER_COLORS.length];
+};
+
+const parsePollMessageDetails = (text, currentUserId) => {
+  if (text && text.startsWith("[POLL]:")) {
+    try {
+      const pollObj = JSON.parse(text.substring(7));
+      return {
+        isPollCard: true,
+        pollQuestion: pollObj.question,
+        pollOptions: pollObj.options.map(opt => ({
+          text: opt.text,
+          voters: opt.voters ? opt.voters.map(v => v === currentUserId ? "me" : v) : []
+        }))
+      };
+    } catch (_) {}
+  }
+  return {};
+};
+
+const parseContactMessageDetails = (text) => {
+  if (text && text.startsWith("[CONTACT]:")) {
+    try {
+      const contactObj = JSON.parse(text.substring(10));
+      return {
+        isContactCard: true,
+        contactConversationId: contactObj.id,
+        contactName: contactObj.name,
+        contactAvatar: contactObj.avatar,
+        contactAvatarBg: "bg-[#00a884] text-white",
+        contactAvatarText: contactObj.name ? contactObj.name.charAt(0).toUpperCase() : "C"
+      };
+    } catch (_) {}
+  }
+  return {};
 };
 
 const renderAvatar = (avatarUrl, name, sizeClass = "w-[38px] h-[38px]", iconSize = "text-[20px]") => {
@@ -180,11 +245,23 @@ export default function ChatConversationPage({ params: paramsPromise }) {
   };
 
   const { socket } = useSocket();
+  const currentUserId = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        return JSON.parse(storedUser).id;
+      } catch (_) {}
+    }
+    return "";
+  }, []);
   const [conversation, setConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [partnerStatus, setPartnerStatus] = useState("offline");
   const [partnerLastSeen, setPartnerLastSeen] = useState("");
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [amIBlocked, setAmIBlocked] = useState(false);
 
   const activeChat = useMemo(() => {
     if (!conversation) {
@@ -195,13 +272,25 @@ export default function ChatConversationPage({ params: paramsPromise }) {
         messages: [],
       };
     }
-    const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-    let currentUserId = "";
-    if (storedUser) {
-      try {
-        currentUserId = JSON.parse(storedUser).id;
-      } catch (_) {}
+
+    if (conversation.isGroup) {
+      const memberNames = conversation.participants
+        .map(p => p._id === currentUserId ? "You" : (p.displayName || p.phoneNumber))
+        .join(", ");
+      
+      let subtext = memberNames;
+      if (partnerTyping) {
+        subtext = "typing...";
+      }
+
+      return {
+        name: conversation.name,
+        avatar: conversation.avatarUrl || null,
+        subtext,
+        messages: [],
+      };
     }
+
     const otherParticipant = conversation.participants.find(p => p._id !== currentUserId) || {};
     const displayName = otherParticipant.displayName || otherParticipant.phoneNumber || "Unknown User";
     
@@ -228,7 +317,12 @@ export default function ChatConversationPage({ params: paramsPromise }) {
       subtext,
       messages: [],
     };
-  }, [conversation, partnerTyping, partnerStatus, partnerLastSeen]);
+  }, [conversation, partnerTyping, partnerStatus, partnerLastSeen, currentUserId]);
+
+  const isCurrentUserAdmin = useMemo(() => {
+    if (!conversation || !conversation.isGroup || !currentUserId) return false;
+    return conversation.admins.some(admin => (admin._id || admin || "").toString() === currentUserId.toString());
+  }, [conversation, currentUserId]);
 
   const [messages, setMessages] = useState([]);
   const [selectedMessageIds, setSelectedMessageIds] = useState([]);
@@ -237,6 +331,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
   const [showAttachSheet, setShowAttachSheet] = useState(false);
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [showPollCreator, setShowPollCreator] = useState(false);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [showCamera, setShowCamera] = useState(false);
@@ -249,6 +344,8 @@ export default function ChatConversationPage({ params: paramsPromise }) {
   const galleryInputRef = useRef(null);
   const documentInputRef = useRef(null);
   const messageInputRef = useRef(null);
+  const isTypingRef = useRef(false);
+  const typingTimeoutRef = useRef(null);
   const [replyingMessage, setReplyingMessage] = useState(null);
   const [forwardingMessage, setForwardingMessage] = useState(null);
   const [chatsList, setChatsList] = useState([]);
@@ -267,6 +364,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
   const [isVoicePlaying, setIsVoicePlaying] = useState(false);
   const [voicePlaybackProgress, setVoicePlaybackProgress] = useState(0);
   const [voicePlaybackTime, setVoicePlaybackTime] = useState(0);
+  const [voicePlaybackSpeed, setVoicePlaybackSpeed] = useState(1);
   const [voiceDurations, setVoiceDurations] = useState({});
   const audioPlaybackRef = useRef(null);
 
@@ -446,6 +544,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
       setVoicePlaybackTime(0);
       
       const audio = new Audio(audioUrl);
+      audio.playbackRate = voicePlaybackSpeed;
       audioPlaybackRef.current = audio;
       
       audio.addEventListener("timeupdate", () => {
@@ -464,6 +563,20 @@ export default function ChatConversationPage({ params: paramsPromise }) {
       audio.play().catch(err => console.error(err));
       setIsVoicePlaying(true);
     }
+  };
+
+  const toggleVoiceSpeed = () => {
+    setVoicePlaybackSpeed((prev) => {
+      let nextSpeed = 1;
+      if (prev === 1) nextSpeed = 1.5;
+      else if (prev === 1.5) nextSpeed = 2;
+      else nextSpeed = 1;
+      
+      if (audioPlaybackRef.current) {
+        audioPlaybackRef.current.playbackRate = nextSpeed;
+      }
+      return nextSpeed;
+    });
   };
 
   const handleStartPress = (e, msgId) => {
@@ -680,13 +793,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
         showToast("Message forwarded");
         if (targetConversationId === id) {
           // If forwarding to current conversation, add it to our local state instantly
-          const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-          let currentUserId = "";
-          if (storedUser) {
-            try {
-              currentUserId = JSON.parse(storedUser).id;
-            } catch (_) {}
-          }
+
           const formatted = {
             id: res.data._id,
             sender: res.data.senderId === currentUserId ? "outgoing" : "incoming",
@@ -722,52 +829,74 @@ export default function ChatConversationPage({ params: paramsPromise }) {
         const convRes = await getConversationDetails(id);
         if (convRes && convRes.success && convRes.data) {
           setConversation(convRes.data);
-          
-          // Set initial partner presence status and last seen
-          const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-          let currentUserId = "";
-          if (storedUser) {
-            try {
-              currentUserId = JSON.parse(storedUser).id;
-            } catch (_) {}
+          const savedTimer = localStorage.getItem("disappearingTimer_" + id) || "Off";
+          setDisappearingTimer(savedTimer);
+          if (typeof window !== "undefined") {
+            const searchParams = new URLSearchParams(window.location.search);
+            if (searchParams.get("action") === "disappearing") {
+              setShowDisappearing(true);
+            }
           }
-          const otherParticipant = convRes.data.participants.find(p => p._id !== currentUserId) || {};
-          setPartnerStatus(otherParticipant.status || "offline");
-          setPartnerLastSeen(otherParticipant.lastSeen || "");
+          
+
+
+          if (!convRes.data.isGroup) {
+            const otherParticipant = convRes.data.participants.find(p => p._id !== currentUserId) || {};
+            setPartnerStatus(otherParticipant.status || "offline");
+            setPartnerLastSeen(otherParticipant.lastSeen || "");
+
+            if (otherParticipant._id) {
+              try {
+                const pRes = await getUserProfileById(otherParticipant._id);
+                if (pRes && pRes.success && pRes.data) {
+                  setIsBlocked(!!pRes.data.isBlocked);
+                  setAmIBlocked(!!pRes.data.amIBlocked);
+                }
+              } catch (err) {
+                console.error("Failed to load block status for chat partner:", err);
+              }
+            }
+          }
         }
 
         const msgRes = await getMessages(id);
         if (msgRes && msgRes.success && msgRes.data) {
-          const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-          let currentUserId = "";
-          if (storedUser) {
-            try {
-              currentUserId = JSON.parse(storedUser).id;
-            } catch (_) {}
-          }
-          const formattedMessages = msgRes.data.map((m) => ({
-            id: m._id,
-            sender: m.senderId === currentUserId ? "outgoing" : "incoming",
-            text: m.text,
-            time: new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
-            status: m.status,
-            createdAt: m.createdAt,
-            edited: m.edited,
-            deletedForEveryone: m.deletedForEveryone,
-            replyTo: m.replyTo ? {
-              name: m.replyTo.senderId ? (m.replyTo.senderId.displayName || m.replyTo.senderId.phoneNumber) : "User",
-              text: m.replyTo.deletedForEveryone ? "This message was deleted" : m.replyTo.text,
-              image: m.replyTo.deletedForEveryone ? null : getMediaUrl(m.replyTo.media)
-            } : null,
-            forwarded: m.forwarded,
-            isVoiceMessage: m.type === "voice" || m.type === "audio",
-            audioUrl: getMediaUrl(m.media),
-            voiceDuration: m.type === "voice" ? m.text : "0:00",
-            image: m.type === "image" ? getMediaUrl(m.media) : null,
-            isDocumentCard: m.type === "document",
-            documentName: m.type === "document" ? m.text : null,
-            documentSize: m.type === "document" && m.fileSize ? `${(m.fileSize / (1024 * 1024)).toFixed(1)} MB` : "0.0 MB"
-          }));
+
+          const formattedMessages = msgRes.data.map((m) => {
+            const senderIdStr = getSenderIdStr(m.senderId);
+            const baseMsg = {
+              id: m._id,
+              sender: senderIdStr === currentUserId ? "outgoing" : "incoming",
+              senderId: senderIdStr,
+              senderName: m.senderId && typeof m.senderId === "object" 
+                ? (m.senderId.displayName || m.senderId.phoneNumber || "Unknown User")
+                : "Unknown User",
+              senderColor: getSenderColorClass(senderIdStr, convRes.data.participants),
+              text: m.text,
+              time: new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
+              status: m.status,
+              createdAt: m.createdAt,
+              edited: m.edited,
+              deletedForEveryone: m.deletedForEveryone,
+              type: m.type,
+              replyTo: m.replyTo ? {
+                name: m.replyTo.senderId ? (m.replyTo.senderId.displayName || m.replyTo.senderId.phoneNumber) : "User",
+                text: m.replyTo.deletedForEveryone ? "This message was deleted" : m.replyTo.text,
+                image: m.replyTo.deletedForEveryone ? null : getMediaUrl(m.replyTo.media)
+              } : null,
+              forwarded: m.forwarded,
+              isVoiceMessage: m.type === "voice" || m.type === "audio",
+              audioUrl: getMediaUrl(m.media),
+              voiceDuration: m.type === "voice" ? m.text : "0:00",
+              image: m.type === "image" ? getMediaUrl(m.media) : null,
+              isDocumentCard: m.type === "document",
+              documentName: m.type === "document" ? m.text : null,
+              documentSize: m.type === "document" && m.fileSize ? `${(m.fileSize / (1024 * 1024)).toFixed(1)} MB` : "0.0 MB"
+            };
+            const pollDetails = parsePollMessageDetails(m.text, currentUserId);
+            const contactDetails = parseContactMessageDetails(m.text);
+            return { ...baseMsg, ...pollDetails, ...contactDetails };
+          });
           setMessages(formattedMessages);
         }
       } catch (err) {
@@ -802,13 +931,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
       try {
         const res = await getConversations();
         if (res && res.success && res.data) {
-          const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-          let currentUserId = "";
-          if (storedUser) {
-            try {
-              currentUserId = JSON.parse(storedUser).id;
-            } catch (_) {}
-          }
+
           const formatted = res.data.map((chat) => {
             const otherParticipant = chat.participants.find(p => p._id !== currentUserId) || {};
             return {
@@ -832,13 +955,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
     socket.emit("join_conversation", id);
 
     const handleNewMessage = (message) => {
-      const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-      let currentUserId = "";
-      if (storedUser) {
-        try {
-          currentUserId = JSON.parse(storedUser).id;
-        } catch (_) {}
-      }
+
 
       if (message.conversationId === id) {
         setMessages((prev) => {
@@ -850,9 +967,15 @@ export default function ChatConversationPage({ params: paramsPromise }) {
           const tempIdx = prev.findIndex((m) => m && m.id && typeof m.id === "string" && m.id.startsWith("temp_") && m.text === message.text);
           if (tempIdx !== -1) {
              const updated = [...prev];
+            const senderIdStr = getSenderIdStr(message.senderId);
             updated[tempIdx] = {
               id: message._id,
               sender: "outgoing",
+              senderId: senderIdStr,
+              senderName: message.senderId && typeof message.senderId === "object" 
+                ? (message.senderId.displayName || message.senderId.phoneNumber || "Unknown User")
+                : "Unknown User",
+              senderColor: getSenderColorClass(senderIdStr, conversation?.participants || []),
               text: message.text,
               time: new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
               status: message.status,
@@ -876,31 +999,42 @@ export default function ChatConversationPage({ params: paramsPromise }) {
             return updated;
           }
 
+          const senderIdStr = getSenderIdStr(message.senderId);
+          const newMsgObj = {
+            id: message._id,
+            sender: senderIdStr === currentUserId ? "outgoing" : "incoming",
+            senderId: senderIdStr,
+            senderName: message.senderId && typeof message.senderId === "object" 
+              ? (message.senderId.displayName || message.senderId.phoneNumber || "Unknown User")
+              : "Unknown User",
+            senderColor: getSenderColorClass(senderIdStr, conversation?.participants || []),
+            text: message.text,
+            time: new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
+            status: message.status,
+            createdAt: message.createdAt,
+            edited: message.edited,
+            deletedForEveryone: message.deletedForEveryone,
+            replyTo: message.replyTo ? {
+              name: message.replyTo.senderId ? (message.replyTo.senderId.displayName || message.replyTo.senderId.phoneNumber) : "User",
+              text: message.replyTo.deletedForEveryone ? "This message was deleted" : message.replyTo.text,
+              image: message.replyTo.deletedForEveryone ? null : getMediaUrl(message.replyTo.media)
+            } : null,
+            forwarded: message.forwarded,
+            type: message.type,
+            isVoiceMessage: message.type === "voice" || message.type === "audio",
+            audioUrl: getMediaUrl(message.media),
+            voiceDuration: message.type === "voice" ? message.text : "0:00",
+            image: message.type === "image" ? getMediaUrl(message.media) : null,
+            isDocumentCard: message.type === "document",
+            documentName: message.type === "document" ? message.text : null,
+            documentSize: message.type === "document" && message.fileSize ? `${(message.fileSize / (1024 * 1024)).toFixed(1)} MB` : "0.0 MB"
+          };
+          const pollDetails = parsePollMessageDetails(message.text, currentUserId);
+          const contactDetails = parseContactMessageDetails(message.text);
+
           return [
             ...prev,
-            {
-              id: message._id,
-              sender: message.senderId === currentUserId ? "outgoing" : "incoming",
-              text: message.text,
-              time: new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
-              status: message.status,
-              createdAt: message.createdAt,
-              edited: message.edited,
-              deletedForEveryone: message.deletedForEveryone,
-              replyTo: message.replyTo ? {
-                name: message.replyTo.senderId ? (message.replyTo.senderId.displayName || message.replyTo.senderId.phoneNumber) : "User",
-                text: message.replyTo.deletedForEveryone ? "This message was deleted" : message.replyTo.text,
-                image: message.replyTo.deletedForEveryone ? null : getMediaUrl(message.replyTo.media)
-              } : null,
-              forwarded: message.forwarded,
-              isVoiceMessage: message.type === "voice" || message.type === "audio",
-              audioUrl: getMediaUrl(message.media),
-              voiceDuration: message.type === "voice" ? message.text : "0:00",
-              image: message.type === "image" ? getMediaUrl(message.media) : null,
-              isDocumentCard: message.type === "document",
-              documentName: message.type === "document" ? message.text : null,
-              documentSize: message.type === "document" && message.fileSize ? `${(message.fileSize / (1024 * 1024)).toFixed(1)} MB` : "0.0 MB"
-            },
+            { ...newMsgObj, ...pollDetails, ...contactDetails }
           ];
         });
       }
@@ -908,13 +1042,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
 
     const handleMessagesRead = ({ conversationId: readConvId, readerId }) => {
       console.log("WebSocket: Received messages_read event on client:", { readConvId, readerId, currentConversationId: id });
-      const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-      let currentUserId = "";
-      if (storedUser) {
-        try {
-          currentUserId = JSON.parse(storedUser).id;
-        } catch (_) {}
-      }
+
 
       if (readConvId === id && readerId !== currentUserId) {
         console.log("Updating outgoing messages to read status locally!");
@@ -931,26 +1059,14 @@ export default function ChatConversationPage({ params: paramsPromise }) {
     };
 
     const handleOnline = ({ userId }) => {
-      const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-      let currentUserId = "";
-      if (storedUser) {
-        try {
-          currentUserId = JSON.parse(storedUser).id;
-        } catch (_) {}
-      }
+
       if (userId !== currentUserId) {
         setPartnerStatus("online");
       }
     };
 
     const handleOffline = ({ userId, lastSeen }) => {
-      const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-      let currentUserId = "";
-      if (storedUser) {
-        try {
-          currentUserId = JSON.parse(storedUser).id;
-        } catch (_) {}
-      }
+
       if (userId !== currentUserId) {
         setPartnerStatus("offline");
         setPartnerLastSeen(lastSeen);
@@ -974,21 +1090,26 @@ export default function ChatConversationPage({ params: paramsPromise }) {
       const msgData = updatedMessage?.data || updatedMessage;
       if (!msgData) return;
       const targetId = msgData._id || msgData.id;
+
+
+
       setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === targetId
-            ? {
-                ...msg,
-                text: msgData.deletedForEveryone ? "" : msgData.text,
-                edited: msgData.edited,
-                deletedForEveryone: msgData.deletedForEveryone,
-                image: msgData.deletedForEveryone ? null : msg.image,
-                isDocumentCard: msgData.deletedForEveryone ? false : msg.isDocumentCard,
-                isContactCard: msgData.deletedForEveryone ? false : msg.isContactCard,
-                isPollCard: msgData.deletedForEveryone ? false : msg.isPollCard,
-              }
-            : msg
-        )
+        prev.map((msg) => {
+          if (msg.id !== targetId) return msg;
+          const baseUpdated = {
+            ...msg,
+            text: msgData.deletedForEveryone ? "" : msgData.text,
+            edited: msgData.edited,
+            deletedForEveryone: msgData.deletedForEveryone,
+            image: msgData.deletedForEveryone ? null : msg.image,
+            isDocumentCard: msgData.deletedForEveryone ? false : msg.isDocumentCard,
+            isContactCard: msgData.deletedForEveryone ? false : msg.isContactCard,
+            isPollCard: msgData.deletedForEveryone ? false : msg.isPollCard,
+          };
+          const pollDetails = parsePollMessageDetails(msgData.text, currentUserId);
+          const contactDetails = parseContactMessageDetails(msgData.text);
+          return { ...baseUpdated, ...pollDetails, ...contactDetails };
+        })
       );
     };
 
@@ -1002,17 +1123,22 @@ export default function ChatConversationPage({ params: paramsPromise }) {
       const msgData = updatedMessage?.data || updatedMessage;
       if (!msgData) return;
       const targetId = msgData._id || msgData.id;
+
+
+
       setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === targetId
-            ? {
-                ...msg,
-                text: msgData.text,
-                edited: msgData.edited,
-                editedAt: msgData.editedAt,
-              }
-            : msg
-        )
+        prev.map((msg) => {
+          if (msg.id !== targetId) return msg;
+          const baseUpdated = {
+            ...msg,
+            text: msgData.text,
+            edited: msgData.edited,
+            editedAt: msgData.editedAt,
+          };
+          const pollDetails = parsePollMessageDetails(msgData.text, currentUserId);
+          const contactDetails = parseContactMessageDetails(msgData.text);
+          return { ...baseUpdated, ...pollDetails, ...contactDetails };
+        })
       );
     };
 
@@ -1052,6 +1178,11 @@ export default function ChatConversationPage({ params: paramsPromise }) {
     socket.on("message_deleted_me", handleMessageDeletedMe);
 
     return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      isTypingRef.current = false;
+
       socket.emit("leave_conversation", id);
       socket.off("new_message", handleNewMessage);
       socket.off("messages_read", handleMessagesRead);
@@ -1071,13 +1202,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
     const handleTyping = ({ conversationId, userId }) => {
       console.log("WebSocket: Received typing event on client:", { conversationId, userId });
       if (conversationId === id) {
-        const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-        let currentUserId = "";
-        if (storedUser) {
-          try {
-            currentUserId = JSON.parse(storedUser).id;
-          } catch (_) {}
-        }
+
         if (userId !== currentUserId) {
           setPartnerTyping(true);
         }
@@ -1087,13 +1212,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
     const handleStopTyping = ({ conversationId, userId }) => {
       console.log("WebSocket: Received stop_typing event on client:", { conversationId, userId });
       if (conversationId === id) {
-        const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-        let currentUserId = "";
-        if (storedUser) {
-          try {
-            currentUserId = JSON.parse(storedUser).id;
-          } catch (_) {}
-        }
+
         if (userId !== currentUserId) {
           setPartnerTyping(false);
         }
@@ -1103,13 +1222,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
     const handleTypingStatus = ({ conversationId, userId, isTyping: typing }) => {
       console.log("WebSocket: Received typing_status event on client:", { conversationId, userId, typing });
       if (conversationId === id) {
-        const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-        let currentUserId = "";
-        if (storedUser) {
-          try {
-            currentUserId = JSON.parse(storedUser).id;
-          } catch (_) {}
-        }
+
         if (userId !== currentUserId) {
           setPartnerTyping(typing);
         }
@@ -1210,7 +1323,6 @@ export default function ChatConversationPage({ params: paramsPromise }) {
   const [clearStarred, setClearStarred] = useState(false);
 
   const [showExportModal, setShowExportModal] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -1315,33 +1427,27 @@ export default function ChatConversationPage({ params: paramsPromise }) {
     setShowAttachSheet(false);
   };
 
-  const sendLocationMsg = (url) => {
-    const newMessage = {
-      id: Date.now(),
-      sender: "outgoing",
-      text: `📍 My Location:\n${url}`,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
-      status: "read"
-    };
-    setMessages((prev) => [...prev, newMessage]);
+  const sendLocationMsg = async (url) => {
+    try {
+      await sendMessage(id, { text: `📍 My Location:\n${url}`, type: "text" });
+    } catch (err) {
+      console.error("Failed to send location message:", err);
+    }
   };
 
-  const handleShareContact = (contact) => {
-    const newMessage = {
-      id: Date.now(),
-      sender: "outgoing",
-      text: "",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
-      status: "read",
-      isContactCard: true,
-      contactName: contact.name,
-      contactAvatar: contact.avatar || null,
-      contactAvatarBg: contact.avatarBg || "bg-[#00a884] text-white",
-      contactAvatarText: contact.avatarText || contact.name.charAt(0).toUpperCase()
+  const handleShareContact = async (contact) => {
+    const contactData = {
+      id: contact.id,
+      name: contact.name,
+      avatar: contact.avatar || null
     };
-    setMessages((prev) => [...prev, newMessage]);
-    setShowContactPicker(false);
-    setShowAttachSheet(false);
+    try {
+      await sendMessage(id, { text: `[CONTACT]:${JSON.stringify(contactData)}`, type: "contact" });
+      setShowContactPicker(false);
+      setShowAttachSheet(false);
+    } catch (err) {
+      console.error("Failed to share contact:", err);
+    }
   };
 
   const handleCapturePhoto = () => {
@@ -1405,7 +1511,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
     setShowCamera(false);
   };
 
-  const handleCreatePoll = () => {
+  const handleCreatePoll = async () => {
     if (!pollQuestion.trim()) {
       showToast("Please enter a question");
       return;
@@ -1415,24 +1521,20 @@ export default function ChatConversationPage({ params: paramsPromise }) {
       showToast("Please enter at least 2 options");
       return;
     }
-    const newMessage = {
-      id: Date.now(),
-      sender: "outgoing",
-      text: "",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
-      status: "read",
-      isPollCard: true,
-      pollQuestion: pollQuestion.trim(),
-      pollOptions: filledOptions.map(opt => ({
-        text: opt.trim(),
-        voters: []
-      }))
+    const pollData = {
+      question: pollQuestion.trim(),
+      options: filledOptions.map(opt => ({ text: opt.trim(), voters: [] }))
     };
-    setMessages((prev) => [...prev, newMessage]);
-    setShowPollCreator(false);
-    setShowAttachSheet(false);
-    setPollQuestion("");
-    setPollOptions(["", ""]);
+    try {
+      await sendMessage(id, { text: `[POLL]:${JSON.stringify(pollData)}`, type: "text" });
+      setShowPollCreator(false);
+      setShowAttachSheet(false);
+      setPollQuestion("");
+      setPollOptions(["", ""]);
+    } catch (err) {
+      console.error("Failed to create poll:", err);
+      showToast("Failed to create poll");
+    }
   };
 
   const updatePollOptionValue = (index, val) => {
@@ -1455,27 +1557,62 @@ export default function ChatConversationPage({ params: paramsPromise }) {
     }
   };
 
-  const handlePollVote = (msgId, optionIndex) => {
-    setMessages((prev) => 
-      prev.map((msg) => {
-        if (msg.id !== msgId) return msg;
-        const updatedOptions = msg.pollOptions.map((opt, idx) => {
-          if (idx !== optionIndex) return opt;
-          const hasVoted = opt.voters.includes("me");
-          const newVoters = hasVoted 
-            ? opt.voters.filter(v => v !== "me") 
-            : [...opt.voters, "me"];
-          return {
-            ...opt,
-            voters: newVoters
-          };
-        });
-        return {
-          ...msg,
-          pollOptions: updatedOptions
-        };
-      })
-    );
+  const handlePollVote = async (msgId, optionIndex) => {
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg) return;
+
+
+    if (!currentUserId) return;
+
+    const updatedOptions = msg.pollOptions.map((opt, idx) => {
+      if (idx !== optionIndex) return opt;
+      const databaseVoters = opt.voters.map(v => v === "me" ? currentUserId : v);
+      const hasVoted = databaseVoters.includes(currentUserId);
+      const nextVoters = hasVoted 
+        ? databaseVoters.filter(v => v !== currentUserId) 
+        : [...databaseVoters, currentUserId];
+      return {
+        text: opt.text,
+        voters: nextVoters
+      };
+    });
+
+    const pollData = {
+      question: msg.pollQuestion,
+      options: updatedOptions
+    };
+
+    try {
+      await editMessage(id, msgId, `[POLL]:${JSON.stringify(pollData)}`);
+      setMessages(prev => prev.map(m => m.id === msgId ? {
+        ...m,
+        pollOptions: updatedOptions.map(opt => ({
+          text: opt.text,
+          voters: opt.voters.map(v => v === currentUserId ? "me" : v)
+        }))
+      } : m));
+    } catch (err) {
+      console.error("Failed to vote on poll:", err);
+    }
+  };
+
+  const handleMessageClick = async (msg) => {
+    if (!msg || !msg.text) return;
+    const details = parseContactMessageDetails(msg.text);
+    if (!details || !details.contactConversationId) return;
+    
+    try {
+      const { createConversation } = await import("@/services/chat/conversations");
+      const res = await createConversation(details.contactConversationId);
+      if (res && res.success && res.data) {
+        router.push(`/chats/${res.data._id}`);
+      } else {
+        router.push(`/chats/${details.contactConversationId}`);
+      }
+    } catch (err) {
+      console.error("Failed to open contact chat:", err);
+      router.push(`/chats/${details.contactConversationId}`);
+    }
   };
 
   const filteredMessages = showSearchBar && searchQuery.trim() !== ""
@@ -1546,13 +1683,471 @@ export default function ChatConversationPage({ params: paramsPromise }) {
     }
   };
 
+  const renderedMessages = useMemo(() => {
+    return filteredMessages.map((msg) => {
+      if (msg.isDivider) {
+        return (
+          <div key={msg.id} className="flex justify-center my-3 select-none">
+            <span className="bg-white text-zinc-500 text-[11.5px] font-semibold px-3 py-1 rounded-[8px] shadow-[0_1.5px_2px_rgba(0,0,0,0.06)] uppercase tracking-wide">
+              {msg.text}
+            </span>
+          </div>
+        );
+      }
+
+      if (msg.type === "system") {
+        const isBlockMsg = msg.text && msg.text.toLowerCase().includes("block");
+        const isBlockerUs = isBlockMsg && msg.sender === "outgoing";
+        const isDisappearingMsg = msg.text && msg.text.toLowerCase().includes("disappearing");
+
+        if (isDisappearingMsg) {
+          return (
+            <div key={msg.id} className="flex justify-center my-3 select-none animate-in fade-in duration-200">
+              <div className="bg-[#ffeecd] dark:bg-[#2c200c] text-[#54656f] dark:text-[#8696a0] text-[12.5px] font-medium px-4 py-2.5 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.08)] max-w-[85%] text-center leading-normal border border-[#f5e3bc] select-none flex flex-col items-center gap-1.5">
+                <div className="flex items-center justify-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px] text-zinc-500 font-bold shrink-0">schedule</span>
+                  <span>{msg.text}</span>
+                </div>
+                <button 
+                  onClick={() => setShowDisappearing(true)}
+                  className="text-[#008069] dark:text-[#ff2d55] font-bold hover:underline cursor-pointer select-none"
+                >
+                  Change timer
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={msg.id} className="flex justify-center my-3 select-none animate-in fade-in duration-200">
+            {isBlockerUs && msg.text.toLowerCase().includes("blocked") ? (
+              <div 
+                onClick={async () => {
+                  const otherParticipant = conversation?.participants?.find(p => p._id !== currentUserId) || {};
+                  if (otherParticipant._id) {
+                    try {
+                      await unblockUser(otherParticipant._id);
+                      setIsBlocked(false);
+                      showToast("Contact unblocked");
+                    } catch (err) {
+                      console.error("Failed to unblock contact:", err);
+                      showToast(err.message || "Failed to unblock contact");
+                    }
+                  }
+                }}
+                className="bg-[#ffeecd] dark:bg-[#2c200c] text-[#54656f] dark:text-[#8696a0] text-[12.5px] font-medium px-4 py-2 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.08)] max-w-[85%] text-center leading-normal cursor-pointer hover:brightness-95 transition-all border border-[#f5e3bc] select-none"
+              >
+                {msg.text} <span className="text-[#008069] dark:text-[#ff2d55] font-bold hover:underline">Tap to unblock.</span>
+              </div>
+            ) : (
+              <div className="bg-[#ffeecd] dark:bg-[#2c200c] text-[#54656f] dark:text-[#8696a0] text-[12.5px] font-medium px-4 py-2 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.08)] max-w-[85%] text-center leading-normal border border-[#f5e3bc] select-none">
+                {msg.text}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      const isOutgoing = msg.sender === "outgoing";
+      return (
+        <div
+          key={msg.id}
+          className={`flex flex-col w-full relative ${isOutgoing ? "items-end" : "items-start"} ${
+            selectedMessageIds.includes(msg.id) ? "bg-[#00a884]/25 py-1 transition-all duration-200" : ""
+          }`}
+          onTouchStart={(e) => handleStartPress(e, msg.id)}
+          onTouchEnd={handleEndPress}
+          onTouchMove={handleEndPress}
+          onMouseDown={(e) => handleStartPress(e, msg.id)}
+          onMouseUp={handleEndPress}
+          onMouseLeave={handleEndPress}
+          onContextMenu={(e) => handleContextMenu(e, msg.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isLongPressActiveRef.current) {
+              isLongPressActiveRef.current = false;
+              return;
+            }
+
+            if (selectedMessageIds.length > 0) {
+              if (selectedMessageIds.includes(msg.id)) {
+                setSelectedMessageIds(prev => prev.filter(id => id !== msg.id));
+              } else {
+                setSelectedMessageIds(prev => [...prev, msg.id]);
+              }
+            }
+          }}
+        >
+          {/* Message Bubble Wrapper to contain Share button */}
+          <div className="relative flex items-center max-w-[85%] md:max-w-[70%]">
+            
+            {/* Reactions Popover */}
+            {selectedMessageIds.length === 1 && selectedMessageIds[0] === msg.id && !showDeleteModal && !contextMenu && (
+              <div className="absolute z-[100] -top-12 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-[0_2px_10px_rgba(0,0,0,0.15)] px-3 py-2 flex items-center gap-2 animate-in fade-in zoom-in-95 duration-150 border border-zinc-100/80">
+                {["👍", "❤️", "😂", "😮", "😢", "🙏", "🎉"].map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReact(msg.id, emoji);
+                    }}
+                    className="text-[20px] hover:scale-125 active:scale-95 transition-transform duration-100 cursor-pointer p-0.5"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReact(msg.id, "+");
+                  }}
+                  className="w-7 h-7 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600 font-bold text-[14px] cursor-pointer"
+                >
+                  +
+                </button>
+              </div>
+            )}
+
+            {/* Share button for incoming links */}
+            {!isOutgoing && msg.showShare && (
+              <button className="w-8 h-8 rounded-full bg-white/70 hover:bg-white shadow-sm flex items-center justify-center absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 text-zinc-500 cursor-pointer">
+                <span className="material-symbols-outlined text-[17px] transform scale-x-[-1]">reply</span>
+              </button>
+            )}
+
+            {/* Message Bubble */}
+            <div
+              className={`w-fit rounded-[12px] shadow-[0_1px_1.5px_rgba(0,0,0,0.12)] px-3 py-1.5 pb-1.5 relative flex flex-col items-end ${
+                isOutgoing ? "min-w-[95px]" : "min-w-[80px]"
+              } ${
+                isOutgoing
+                  ? (activeTheme === "blue" ? "bg-[#007aff] text-white rounded-tr-[2px]" :
+                     activeTheme === "purple" ? "bg-[#7e22ce] text-white rounded-tr-[2px]" :
+                     activeTheme === "orange" ? "bg-[#ea580c] text-white rounded-tr-[2px]" :
+                     activeTheme === "teal" ? "bg-[#0d9488] text-white rounded-tr-[2px]" :
+                     "bg-[#d9fdd3] text-[#111b21] rounded-tr-[2px]")
+                  : "bg-white text-[#111b21] rounded-tl-[2px]"
+              }`}
+            >
+              {/* Forwarded Label */}
+              {msg.forwarded && (
+                <div className="flex items-center gap-1 text-[11px] text-zinc-400 italic mb-1 self-start select-none">
+                  <span className="material-symbols-outlined text-[13px] transform scale-x-[-1] leading-none">reply</span>
+                  <span className="leading-none">Forwarded</span>
+                </div>
+              )}
+              {/* Sender name for group chats */}
+              {conversation?.isGroup && !isOutgoing && msg.senderName && (
+                <div className="flex justify-between items-baseline gap-4 mb-1">
+                  <span className={`text-[12.5px] font-bold ${msg.senderColor}`}>
+                    {msg.senderName}
+                  </span>
+                  {msg.senderPhone && (
+                    <span className="text-[10px] text-[#667781] font-normal">
+                      {msg.senderPhone}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Reply Card */}
+              {msg.replyTo && (
+                <div className={`border-l-[4px] rounded-r-[6px] p-2 mb-2 flex justify-between items-center text-[13px] leading-tight select-none w-full ${
+                  isOutgoing ? "bg-black/[0.06]" : "bg-black/[0.04]"
+                } ${
+                  isOutgoing
+                    ? (activeTheme === "blue" ? "border-white" :
+                       activeTheme === "purple" ? "border-white" :
+                       activeTheme === "orange" ? "border-white" :
+                       activeTheme === "teal" ? "border-white" :
+                       "border-[#008069]")
+                    : "border-[#027eb5]"
+                }`}>
+                  <div className="flex flex-col flex-1 min-w-0 pr-2">
+                    <span className={`font-bold mb-0.5 ${
+                      isOutgoing
+                        ? (activeTheme === "blue" ? "text-white" :
+                           activeTheme === "purple" ? "text-white" :
+                           activeTheme === "orange" ? "text-white" :
+                           activeTheme === "teal" ? "text-white" :
+                           "text-[#008069]")
+                        : "text-[#027eb5]"
+                    }`}>{msg.replyTo.name}</span>
+                    <span className={`${isOutgoing && ["blue", "purple", "orange", "teal"].includes(activeTheme) ? "text-white/80" : "text-[#667781]"} block truncate max-w-[200px] overflow-hidden whitespace-nowrap`}>{msg.replyTo.text}</span>
+                  </div>
+                  {msg.replyTo.image && (
+                    <img src={msg.replyTo.image} className="w-10 h-10 object-cover rounded-md shrink-0 ml-1.5" />
+                  )}
+                </div>
+              )}
+
+              {/* Link Preview Card */}
+              {msg.isLinkCard && (
+                <div className="bg-[#f5f6f6] rounded-[8px] overflow-hidden mb-2 border border-zinc-100/60 flex">
+                  {msg.linkImage && (
+                    <div className="w-[82px] h-[82px] shrink-0 bg-white flex items-center justify-center p-1 border-r border-zinc-200/50">
+                      <img src={msg.linkImage} className="max-w-full max-h-full object-contain" />
+                    </div>
+                  )}
+                  <div className="p-2 flex-1 min-w-0 flex flex-col justify-center leading-tight">
+                    <span className="font-bold text-[13px] text-[#1c2e35] truncate">{msg.linkTitle}</span>
+                    <span className="text-[11px] text-zinc-500 truncate mt-0.5">{msg.linkDescription}</span>
+                    <div className="flex items-center gap-1 mt-1 text-[11px] text-[#00a884] font-semibold">
+                      <span className="material-symbols-outlined text-[13px]">link</span>
+                      <span className="truncate">{msg.linkDomain}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {msg.image && !msg.deletedForEveryone && (
+                <div className="relative rounded-[8px] overflow-hidden mb-1.5 border border-zinc-100 max-w-[280px]">
+                  {isOutgoing ? (
+                    <img 
+                      className="w-full h-auto object-cover max-h-[180px] cursor-pointer hover:brightness-95 transition-all" 
+                      src={msg.image} 
+                      alt="Attached image" 
+                      onClick={() => setLightboxImage(msg.image)}
+                    />
+                  ) : (
+                    <>
+                      <img 
+                        className="w-full h-auto object-cover max-h-[180px] filter blur-[1.5px] brightness-90 cursor-pointer hover:brightness-95 transition-all" 
+                        src={msg.image} 
+                        alt="Attached image" 
+                        onClick={() => setLightboxImage(msg.image)}
+                      />
+                      {/* Download size overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <button className="bg-black/55 text-white text-[12px] font-semibold px-3 py-2 rounded-full flex items-center gap-1.5 hover:bg-black/75 transition-all pointer-events-auto">
+                          <span className="material-symbols-outlined text-[17px] font-bold">download</span>
+                          <span>{msg.imageSize}</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              {msg.image && !msg.deletedForEveryone && !msg.text && <div className="h-4"></div>}
+
+              {/* Voice Message attachment */}
+              {msg.isVoiceMessage && !msg.deletedForEveryone && (
+                <div className="flex items-center gap-2 py-1.5 px-0.5 select-none min-w-[260px] font-sans">
+                  {/* Audio Controls (Play, Jump Back, Jump Forward) */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* Jump Back 5s */}
+                    {playingVoiceId === msg.id && (
+                      <button
+                        type="button"
+                        onClick={() => handleVoiceJump(-5)}
+                        className="w-7 h-7 rounded-full bg-zinc-200/50 hover:bg-zinc-200 flex items-center justify-center text-[#54656f] active:scale-90 transition-all cursor-pointer"
+                        title="Go back 5s"
+                      >
+                        <span className="material-symbols-outlined text-[17px] font-bold">replay_5</span>
+                      </button>
+                    )}
+
+                    {/* Play/Pause Button */}
+                    <button
+                      type="button"
+                      onClick={() => togglePlayVoiceMessage(msg.id, msg.audioUrl)}
+                      className="w-10 h-10 rounded-full bg-zinc-200/50 hover:bg-zinc-200/80 active:bg-zinc-300/80 flex items-center justify-center shrink-0 active:scale-90 transition-all text-[#111b21] cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[24px] fill text-[#54656f]">
+                        {playingVoiceId === msg.id && isVoicePlaying ? "pause" : "play_arrow"}
+                      </span>
+                    </button>
+
+                    {/* Jump Forward 5s */}
+                    {playingVoiceId === msg.id && (
+                      <button
+                        type="button"
+                        onClick={() => handleVoiceJump(5)}
+                        className="w-7 h-7 rounded-full bg-zinc-200/50 hover:bg-zinc-200 flex items-center justify-center text-[#54656f] active:scale-90 transition-all cursor-pointer"
+                        title="Forward 5s"
+                      >
+                        <span className="material-symbols-outlined text-[17px] font-bold">forward_5</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Waveform/Seekbar container */}
+                  <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
+                    {/* Seekable Waveform indicator */}
+                    <div 
+                      onClick={(e) => handleVoiceSeek(e, msg.id)}
+                      className="flex items-end gap-[2px] h-[22px] px-1 select-none cursor-pointer hover:bg-zinc-100/10 rounded transition-all"
+                      title="Click to seek"
+                    >
+                      {[10, 16, 8, 12, 20, 14, 8, 12, 16, 12, 20, 14, 8, 12, 16, 10, 6, 12, 14, 18, 10, 14, 8, 12, 6].map((h, i) => (
+                        <div
+                          key={i}
+                          className="w-[3px] rounded-full transition-all duration-150 pointer-events-none"
+                          style={{
+                            height: `${h}px`,
+                            backgroundColor: playingVoiceId === msg.id && (voicePlaybackProgress > (i / 25))
+                              ? "#00a884"
+                              : "#b1b9be"
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Timeline and Speed Controls */}
+                    <div className="flex items-center justify-between text-[11px] text-[#667781] px-0.5">
+                      <span>{playingVoiceId === msg.id ? formatVoiceDuration(voicePlaybackTime) : msg.voiceDuration}</span>
+                      
+                      {/* Playback speed toggle */}
+                      {playingVoiceId === msg.id && (
+                        <button
+                          type="button"
+                          onClick={toggleVoiceSpeed}
+                          className="font-bold bg-zinc-200/60 dark:bg-zinc-800 text-[#111b21] px-1 rounded hover:bg-zinc-300/60 active:scale-90 transition-all cursor-pointer"
+                          title="Change speed"
+                        >
+                          {voicePlaybackSpeed}x
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Document attachment */}
+              {msg.isDocumentCard && !msg.deletedForEveryone && (
+                <div className="bg-[#f0f2f5] dark:bg-[#202c33] rounded-[8px] p-2.5 mb-1.5 border border-zinc-200/30 flex items-center gap-3 w-full min-w-[240px] max-w-[280px] select-none text-[#111b21] dark:text-[#e9edef] font-sans">
+                  {/* File Icon */}
+                  <span className="material-symbols-outlined text-[32px] text-zinc-500 fill">description</span>
+                  {/* Info details */}
+                  <div className="flex-1 min-w-0 leading-tight">
+                    <span className="text-[13.5px] font-semibold truncate block">{msg.documentName}</span>
+                    <span className="text-[11.5px] text-[#667781] dark:text-[#8696a0] mt-0.5 block">{msg.documentSize}</span>
+                  </div>
+                  {/* Download indicator */}
+                  <button className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center shrink-0 text-zinc-500 cursor-pointer active:scale-95 transition-all">
+                    <span className="material-symbols-outlined text-[19px] font-bold">download</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Message text content */}
+              {msg.deletedForEveryone ? (
+                <div className="flex items-center gap-1.5 text-[13.8px] text-zinc-400 italic select-none py-1">
+                  <span className="material-symbols-outlined text-[17px] leading-none">block</span>
+                  <span className="leading-none">This message was deleted</span>
+                </div>
+              ) : msg.text && msg.text.startsWith("[CONTACT]:") ? (() => {
+                const details = parseContactMessageDetails(msg.text);
+                if (!details || !details.contactName) return null;
+                return (
+                  <div className="bg-[#f0f2f5] dark:bg-[#202c33] rounded-[8px] p-3 border border-zinc-200/30 w-full min-w-[220px] max-w-[260px] select-none font-sans text-[#111b21] dark:text-[#e9edef] flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      {renderAvatar(details.contactAvatar, details.contactName, "w-[40px] h-[40px]", "text-[18px]")}
+                      <span className="text-[14.5px] font-semibold truncate flex-1 text-left">{details.contactName}</span>
+                    </div>
+                    <div className="h-[1px] bg-zinc-200 dark:bg-zinc-700/50 w-full"></div>
+                    <button 
+                      onClick={() => handleMessageClick(msg)}
+                      className="text-[#00a884] hover:text-[#008f70] text-[13.5px] font-bold py-1 w-full text-center transition-colors active:scale-95 cursor-pointer"
+                    >
+                      Message
+                    </button>
+                  </div>
+                );
+              })() : msg.text && msg.text.startsWith("[LOCATION]:") ? (() => {
+                const details = parseLocationMessageDetails(msg.text);
+                if (!details || !details.locationUrl) return null;
+                return (
+                  <div className="bg-[#f0f2f5] dark:bg-[#202c33] rounded-[8px] p-2 border border-zinc-200/30 w-full min-w-[220px] max-w-[260px] select-none font-sans text-[#111b21] dark:text-[#e9edef] flex flex-col gap-2 cursor-pointer hover:brightness-98 transition-all" onClick={() => window.open(details.locationUrl, "_blank")}>
+                    {/* Google Map Mock static view */}
+                    <div className="relative w-full h-[120px] rounded-md overflow-hidden bg-sky-100 border border-zinc-200/50 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[36px] text-emerald-500 fill animate-bounce">location_on</span>
+                      {/* Map grid lines overlay */}
+                      <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-1 py-0.5">
+                      <span className="material-symbols-outlined text-[17px] text-emerald-500 fill">location_on</span>
+                      <span className="text-[13px] font-bold text-[#00a884] truncate">My Location</span>
+                    </div>
+                  </div>
+                );
+              })() : (
+                <p className="text-[14.2px] font-normal break-words leading-relaxed whitespace-pre-wrap max-w-[240px] text-left w-full">
+                  {renderTextWithLinks(msg.text, searchQuery)}
+                </p>
+              )}
+
+              {/* Time + Status stamp (Flow layout below text) */}
+              <div className="flex items-center gap-1 mt-1 select-none shrink-0">
+                {msg.edited && !msg.deletedForEveryone && (
+                  <span className="text-[9.5px] text-zinc-400 font-medium leading-none select-none">
+                    edited
+                  </span>
+                )}
+                <span className="text-[10.5px] text-[#667781] font-medium leading-none">
+                  {msg.time}
+                </span>
+                {isOutgoing && !msg.deletedForEveryone && (
+                  <span className={`material-symbols-outlined text-[16px] font-bold leading-none shrink-0 ${
+                    msg.status === "read" ? "text-[#53bdeb]" : "text-[#8696a0]"
+                  }`}>
+                    {msg.status === "sent" ? "done" : "done_all"}
+                  </span>
+                )}
+              </div>
+
+              {/* Reaction badge */}
+              {msg.reaction && (
+                <div className="absolute -bottom-2.5 left-2 bg-white rounded-full px-1.5 py-0.5 text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.15)] border border-zinc-50 flex items-center justify-center select-none">
+                  {msg.reaction}
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Spacer to align bubble spacing with reaction overflow */}
+          {msg.reaction && <div className="h-2"></div>}
+        </div>
+      );
+    });
+  }, [
+    filteredMessages,
+    searchQuery,
+    selectedMessageIds,
+    activeTheme,
+    playingVoiceId,
+    isVoicePlaying,
+    voicePlaybackProgress,
+    conversation,
+    showDeleteModal,
+    contextMenu,
+    currentUserId,
+    voicePlaybackTime,
+    voicePlaybackSpeed,
+    isRecording,
+  ]);
+
+  // Handle typing input event with debouncing
   const handleInput = (e) => {
     setInputText(e.target.value);
     if (socket && id) {
-      console.log("WebSocket: Emitting typing/stop_typing from client:", { value: e.target.value, id });
       if (e.target.value.length > 0) {
-        socket.emit("typing", { conversationId: id });
+        if (!isTypingRef.current) {
+          isTypingRef.current = true;
+          socket.emit("typing", { conversationId: id });
+        }
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+        typingTimeoutRef.current = setTimeout(() => {
+          isTypingRef.current = false;
+          socket.emit("stop_typing", { conversationId: id });
+        }, 3000);
       } else {
+        isTypingRef.current = false;
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
         socket.emit("stop_typing", { conversationId: id });
       }
     }
@@ -1700,7 +2295,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
             </button>
             
             <div 
-              onClick={() => router.push(`/chats/${id}/profile`)}
+              onClick={() => conversation?.isGroup ? setShowGroupInfo(true) : router.push(`/chats/${id}/profile`)}
               className="flex items-center gap-2 cursor-pointer active:opacity-90 overflow-hidden flex-1 h-full py-1"
             >
               {/* Avatar */}
@@ -1788,414 +2383,42 @@ export default function ChatConversationPage({ params: paramsPromise }) {
           onClick={() => { if (selectedMessageIds.length > 0) setSelectedMessageIds([]); }}
           className="absolute inset-0 overflow-y-auto px-3.5 py-4 pb-6 space-y-3.5 no-scrollbar"
         >
-          {filteredMessages.map((msg) => {
-            if (msg.isDivider) {
-              return (
-                <div key={msg.id} className="flex justify-center my-3 select-none">
-                  <span className="bg-white text-zinc-500 text-[11.5px] font-semibold px-3 py-1 rounded-[8px] shadow-[0_1.5px_2px_rgba(0,0,0,0.06)] uppercase tracking-wide">
-                    {msg.text}
-                  </span>
-                </div>
-              );
-            }
+          {renderedMessages}
 
-            const isOutgoing = msg.sender === "outgoing";
-            return (
-              <div
-                key={msg.id}
-                className={`flex flex-col w-full relative ${isOutgoing ? "items-end" : "items-start"} ${
-                  selectedMessageIds.includes(msg.id) ? "bg-[#00a884]/25 py-1 transition-all duration-200" : ""
-                }`}
-                onTouchStart={(e) => handleStartPress(e, msg.id)}
-                onTouchEnd={handleEndPress}
-                onTouchMove={handleEndPress}
-                onMouseDown={(e) => handleStartPress(e, msg.id)}
-                onMouseUp={handleEndPress}
-                onMouseLeave={handleEndPress}
-                onContextMenu={(e) => handleContextMenu(e, msg.id)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isLongPressActiveRef.current) {
-                    isLongPressActiveRef.current = false;
-                    return;
-                  }
 
-                  if (selectedMessageIds.length > 0) {
-                    if (selectedMessageIds.includes(msg.id)) {
-                      setSelectedMessageIds(prev => prev.filter(id => id !== msg.id));
-                    } else {
-                      setSelectedMessageIds(prev => [...prev, msg.id]);
+          {/* Block System Message Bubble */}
+          {isBlocked && (
+            <div className="flex justify-center my-4 select-none animate-in fade-in duration-200">
+              <div 
+                onClick={async () => {
+
+                  const otherParticipant = conversation?.participants?.find(p => p._id !== currentUserId) || {};
+                  if (otherParticipant._id) {
+                    try {
+                      await unblockUser(otherParticipant._id);
+                      setIsBlocked(false);
+                      showToast("Contact unblocked");
+                    } catch (err) {
+                      console.error("Failed to unblock contact:", err);
+                      showToast(err.message || "Failed to unblock contact");
                     }
                   }
                 }}
+                className="bg-[#ffeecd] dark:bg-[#2c200c] text-[#54656f] dark:text-[#8696a0] text-[12.5px] font-medium px-4 py-2 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.08)] max-w-[85%] text-center leading-normal cursor-pointer hover:brightness-95 transition-all border border-[#f5e3bc] select-none"
               >
-                {/* Message Bubble Wrapper to contain Share button */}
-                <div className="relative flex items-center max-w-[85%] md:max-w-[70%]">
-                  
-                  {/* Reactions Popover */}
-                  {selectedMessageIds.length === 1 && selectedMessageIds[0] === msg.id && !showDeleteModal && !contextMenu && (
-                    <div className="absolute z-[100] -top-12 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-[0_2px_10px_rgba(0,0,0,0.15)] px-3 py-2 flex items-center gap-2 animate-in fade-in zoom-in-95 duration-150 border border-zinc-100/80">
-                      {["👍", "❤️", "😂", "😮", "😢", "🙏", "🎉"].map((emoji) => (
-                        <button
-                          key={emoji}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleReact(msg.id, emoji);
-                          }}
-                          className="text-[20px] hover:scale-125 active:scale-95 transition-transform duration-100 cursor-pointer p-0.5"
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleReact(msg.id, "✨");
-                        }}
-                        className="w-7 h-7 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600 font-bold text-[14px] cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Share button for incoming links */}
-                  {!isOutgoing && msg.showShare && (
-                    <button className="w-8 h-8 rounded-full bg-white/70 hover:bg-white shadow-sm flex items-center justify-center absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 text-zinc-500 cursor-pointer">
-                      <span className="material-symbols-outlined text-[17px] transform scale-x-[-1]">reply</span>
-                    </button>
-                  )}
-
-                  {/* Message Bubble */}
-                  <div
-                    className={`w-fit rounded-[12px] shadow-[0_1px_1.5px_rgba(0,0,0,0.12)] px-3 py-1.5 pb-1.5 relative flex flex-col items-end ${
-                      isOutgoing ? "min-w-[95px]" : "min-w-[80px]"
-                    } ${
-                      isOutgoing
-                        ? (activeTheme === "blue" ? "bg-[#007aff] text-white rounded-tr-[2px]" :
-                           activeTheme === "purple" ? "bg-[#7e22ce] text-white rounded-tr-[2px]" :
-                           activeTheme === "orange" ? "bg-[#ea580c] text-white rounded-tr-[2px]" :
-                           activeTheme === "teal" ? "bg-[#0d9488] text-white rounded-tr-[2px]" :
-                           "bg-[#d9fdd3] text-[#111b21] rounded-tr-[2px]")
-                        : "bg-white text-[#111b21] rounded-tl-[2px]"
-                    }`}
-                  >
-                    {/* Forwarded Label */}
-                    {msg.forwarded && (
-                      <div className="flex items-center gap-1 text-[11px] text-zinc-400 italic mb-1 self-start select-none">
-                        <span className="material-symbols-outlined text-[13px] transform scale-x-[-1] leading-none">reply</span>
-                        <span className="leading-none">Forwarded</span>
-                      </div>
-                    )}
-                    {/* Sender name for group chats */}
-                    {!isOutgoing && msg.senderName && (
-                      <div className="flex justify-between items-baseline gap-4 mb-1">
-                        <span className={`text-[12.5px] font-bold ${msg.senderColor}`}>
-                          {msg.senderName}
-                        </span>
-                        {msg.senderPhone && (
-                          <span className="text-[10px] text-[#667781] font-normal">
-                            {msg.senderPhone}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Reply Card */}
-                    {msg.replyTo && (
-                      <div className={`border-l-[4px] rounded-r-[6px] p-2 mb-2 flex justify-between items-center text-[13px] leading-tight select-none w-full ${
-                        isOutgoing ? "bg-black/[0.06]" : "bg-black/[0.04]"
-                      } ${
-                        isOutgoing
-                          ? (activeTheme === "blue" ? "border-white" :
-                             activeTheme === "purple" ? "border-white" :
-                             activeTheme === "orange" ? "border-white" :
-                             activeTheme === "teal" ? "border-white" :
-                             "border-[#008069]")
-                          : "border-[#027eb5]"
-                      }`}>
-                        <div className="flex flex-col flex-1 min-w-0 pr-2">
-                          <span className={`font-bold mb-0.5 ${
-                            isOutgoing
-                              ? (activeTheme === "blue" ? "text-white" :
-                                 activeTheme === "purple" ? "text-white" :
-                                 activeTheme === "orange" ? "text-white" :
-                                 activeTheme === "teal" ? "text-white" :
-                                 "text-[#008069]")
-                              : "text-[#027eb5]"
-                          }`}>{msg.replyTo.name}</span>
-                          <span className={`${isOutgoing && ["blue", "purple", "orange", "teal"].includes(activeTheme) ? "text-white/80" : "text-[#667781]"} block truncate max-w-[200px] overflow-hidden whitespace-nowrap`}>{msg.replyTo.text}</span>
-                        </div>
-                        {msg.replyTo.image && (
-                          <img src={msg.replyTo.image} className="w-10 h-10 object-cover rounded-md shrink-0 ml-1.5" />
-                        )}
-                      </div>
-                    )}
-
-                    {/* Link Preview Card */}
-                    {msg.isLinkCard && (
-                      <div className="bg-[#f5f6f6] rounded-[8px] overflow-hidden mb-2 border border-zinc-100/60 flex">
-                        {msg.linkImage && (
-                          <div className="w-[82px] h-[82px] shrink-0 bg-white flex items-center justify-center p-1 border-r border-zinc-200/50">
-                            <img src={msg.linkImage} className="max-w-full max-h-full object-contain" />
-                          </div>
-                        )}
-                        <div className="p-2 flex-1 min-w-0 flex flex-col justify-center leading-tight">
-                          <span className="font-bold text-[13px] text-[#1c2e35] truncate">{msg.linkTitle}</span>
-                          <span className="text-[11px] text-zinc-500 truncate mt-0.5">{msg.linkDescription}</span>
-                          <div className="flex items-center gap-1 mt-1 text-[11px] text-[#00a884] font-semibold">
-                            <span className="material-symbols-outlined text-[13px]">link</span>
-                            <span className="truncate">{msg.linkDomain}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {msg.image && !msg.deletedForEveryone && (
-                      <div className="relative rounded-[8px] overflow-hidden mb-1.5 border border-zinc-100 max-w-[280px]">
-                        {isOutgoing ? (
-                          <img 
-                            className="w-full h-auto object-cover max-h-[180px] cursor-pointer hover:brightness-95 transition-all" 
-                            src={msg.image} 
-                            alt="Attached image" 
-                            onClick={() => setLightboxImage(msg.image)}
-                          />
-                        ) : (
-                          <>
-                            <img 
-                              className="w-full h-auto object-cover max-h-[180px] filter blur-[1.5px] brightness-90 cursor-pointer hover:brightness-95 transition-all" 
-                              src={msg.image} 
-                              alt="Attached image" 
-                              onClick={() => setLightboxImage(msg.image)}
-                            />
-                            {/* Download size overlay */}
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <button className="bg-black/55 text-white text-[12px] font-semibold px-3 py-2 rounded-full flex items-center gap-1.5 hover:bg-black/75 transition-all pointer-events-auto">
-                                <span className="material-symbols-outlined text-[17px] font-bold">download</span>
-                                <span>{msg.imageSize}</span>
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                    {msg.image && !msg.deletedForEveryone && !msg.text && <div className="h-4"></div>}
-
-                    {/* Voice Message attachment */}
-                    {msg.isVoiceMessage && !msg.deletedForEveryone && (
-                      <div className="flex items-center gap-2 py-1.5 px-0.5 select-none min-w-[260px] font-sans">
-                        {/* Audio Controls (Play, Jump Back, Jump Forward) */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          {/* Jump Back 5s */}
-                          {playingVoiceId === msg.id && (
-                            <button
-                              type="button"
-                              onClick={() => handleVoiceJump(-5)}
-                              className="w-7 h-7 rounded-full bg-zinc-200/50 hover:bg-zinc-200 flex items-center justify-center text-[#54656f] active:scale-90 transition-all cursor-pointer"
-                              title="Go back 5s"
-                            >
-                              <span className="material-symbols-outlined text-[17px] font-bold">replay_5</span>
-                            </button>
-                          )}
-
-                          {/* Play/Pause Button */}
-                          <button
-                            type="button"
-                            onClick={() => togglePlayVoiceMessage(msg.id, msg.audioUrl)}
-                            className="w-10 h-10 rounded-full bg-zinc-200/50 hover:bg-zinc-200/80 active:bg-zinc-300/80 flex items-center justify-center shrink-0 active:scale-90 transition-all text-[#111b21] cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-[24px] fill text-[#54656f]">
-                              {playingVoiceId === msg.id && isVoicePlaying ? "pause" : "play_arrow"}
-                            </span>
-                          </button>
-
-                          {/* Jump Forward 5s */}
-                          {playingVoiceId === msg.id && (
-                            <button
-                              type="button"
-                              onClick={() => handleVoiceJump(5)}
-                              className="w-7 h-7 rounded-full bg-zinc-200/50 hover:bg-zinc-200 flex items-center justify-center text-[#54656f] active:scale-90 transition-all cursor-pointer"
-                              title="Forward 5s"
-                            >
-                              <span className="material-symbols-outlined text-[17px] font-bold">forward_5</span>
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Waveform/Seekbar container */}
-                        <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
-                          {/* Seekable Waveform indicator */}
-                          <div 
-                            onClick={(e) => handleVoiceSeek(e, msg.id)}
-                            className="flex items-end gap-[2px] h-[22px] px-1 select-none cursor-pointer hover:bg-zinc-100/10 rounded transition-all"
-                            title="Click to seek"
-                          >
-                            {[10, 16, 8, 12, 20, 14, 8, 12, 16, 12, 20, 14, 8, 12, 16, 10, 6, 12, 14, 18, 10, 14, 8, 12, 6].map((h, i) => (
-                              <div
-                                key={i}
-                                className="w-[3px] rounded-full transition-all duration-150 pointer-events-none"
-                                style={{
-                                  height: `${h}px`,
-                                  backgroundColor: playingVoiceId === msg.id && (voicePlaybackProgress > (i / 25))
-                                    ? "#00a884"
-                                    : "#b1b9be"
-                                }}
-                              />
-                            ))}
-                          </div>
-
-                          {/* Time / Status indicators */}
-                          <div className="flex justify-between items-center text-[10.5px] text-[#667781] px-1 leading-none font-medium">
-                            <span>
-                              {playingVoiceId === msg.id ? formatVoiceDuration(voicePlaybackTime) : (voiceDurations[msg.id] || msg.voiceDuration || "0:00")}
-                            </span>
-                            <span className="material-symbols-outlined text-[15px] text-[#00a884] fill">mic</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Document Card attachment */}
-                    {msg.isDocumentCard && !msg.deletedForEveryone && (
-                      <div className="bg-[#f0f2f5] rounded-[8px] p-2.5 mb-1.5 flex items-center justify-between gap-3 border border-zinc-200/40 select-none min-w-[220px]">
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <span className="material-symbols-outlined text-purple-600 text-[28px] shrink-0">description</span>
-                          <div className="flex flex-col min-w-0 flex-1 leading-tight">
-                            <span className="text-[13.5px] font-medium text-[#111b21] truncate">{msg.documentName}</span>
-                            <span className="text-[11px] text-[#667781] mt-0.5">{msg.documentSize}</span>
-                          </div>
-                        </div>
-                        <button className="text-zinc-500 hover:text-zinc-800 p-1 cursor-pointer">
-                          <span className="material-symbols-outlined text-[20px] font-bold">download</span>
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Contact Card attachment */}
-                    {msg.isContactCard && !msg.deletedForEveryone && (
-                      <div className="bg-[#f0f2f5] rounded-[8px] overflow-hidden mb-1.5 border border-zinc-200/40 select-none min-w-[220px]">
-                        <div className="p-3 flex items-center gap-3.5">
-                          {msg.contactAvatar ? (
-                            <img src={msg.contactAvatar} className="w-[38px] h-[38px] rounded-full object-cover shrink-0" />
-                          ) : (
-                            <div className={`w-[38px] h-[38px] rounded-full flex items-center justify-center text-[13.5px] font-bold shrink-0 ${msg.contactAvatarBg}`}>
-                              {msg.contactAvatarText}
-                            </div>
-                          )}
-                          <div className="flex flex-col leading-tight min-w-0">
-                            <span className="text-[14px] font-bold text-[#111b21] truncate">{msg.contactName}</span>
-                            <span className="text-[11.5px] text-[#667781] mt-0.5">Contact</span>
-                          </div>
-                        </div>
-                        <div className="border-t border-zinc-200/50 py-2 text-center text-[13px] font-semibold text-[#00a884] hover:bg-zinc-100/50 cursor-pointer active:bg-zinc-100 transition-colors">
-                          Message
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Poll Card attachment */}
-                    {msg.isPollCard && !msg.deletedForEveryone && (
-                      <div className="flex flex-col gap-2.5 min-w-[240px] max-w-[310px] select-none text-sans font-sans">
-                        {/* Question */}
-                        <span className="text-[14px] font-bold text-[#111b21] leading-tight break-words">{msg.pollQuestion}</span>
-                        
-                        {/* Options List */}
-                        <div className="flex flex-col gap-3.5 mt-1">
-                          {msg.pollOptions.map((opt, idx) => {
-                            const hasVoted = opt.voters.includes("me");
-                            const totalVotes = msg.pollOptions.reduce((acc, o) => acc + o.voters.length, 0);
-                            const votesCount = opt.voters.length;
-                            const pct = totalVotes > 0 ? (votesCount / totalVotes) * 100 : 0;
-                            
-                            return (
-                              <div 
-                                key={idx} 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePollVote(msg.id, idx);
-                                }}
-                                className="flex flex-col gap-1.5 cursor-pointer active:opacity-80 transition-opacity"
-                              >
-                                {/* Option Header */}
-                                <div className="flex items-center gap-2.5">
-                                  {/* Selector Circle */}
-                                  <div className={`w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center shrink-0 transition-colors ${
-                                    hasVoted ? "border-[#00a884] bg-[#00a884] text-white" : "border-zinc-300"
-                                  }`}>
-                                    {hasVoted && <span className="material-symbols-outlined text-[12px] font-bold">done</span>}
-                                  </div>
-                                  {/* Text */}
-                                  <span className="text-[13px] text-[#111b21] font-medium break-words leading-tight">{opt.text}</span>
-                                </div>
-                                
-                                {/* Progress Bar Row */}
-                                <div className="flex items-center gap-2.5 pl-[26px]">
-                                  {/* Bar */}
-                                  <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
-                                    <div 
-                                      className={`h-full rounded-full transition-all duration-300 ${hasVoted ? "bg-[#00a884]" : "bg-zinc-400"}`} 
-                                      style={{ width: `${pct}%` }}
-                                    />
-                                  </div>
-                                  {/* Votes count */}
-                                  <span className="text-[10px] text-[#667781] shrink-0 font-semibold">{votesCount} {votesCount === 1 ? "vote" : "votes"}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                    {msg.isPollCard && !msg.deletedForEveryone && <div className="h-5"></div>}
-
-                    {/* Message content */}
-                    {msg.deletedForEveryone ? (
-                      <p className="text-[14.2px] italic text-[#8696a0] break-words leading-relaxed whitespace-pre-wrap max-w-[240px] text-left w-full flex items-center gap-1.5 select-none">
-                        <span className="material-symbols-outlined text-[16px] text-zinc-400">block</span>
-                        This message was deleted
-                      </p>
-                    ) : msg.isVoiceMessage ? null : msg.isTagsOnly ? (
-                      <p className="text-[14.2px] font-semibold text-[#008069] break-words leading-relaxed whitespace-pre-wrap max-w-[240px] text-left w-full">
-                        {renderTextWithLinks(msg.text, searchQuery)}
-                      </p>
-                    ) : (
-                      <p className="text-[14.2px] font-normal break-words leading-relaxed whitespace-pre-wrap max-w-[240px] text-left w-full">
-                        {renderTextWithLinks(msg.text, searchQuery)}
-                      </p>
-                    )}
-
-                    {/* Time + Status stamp (Flow layout below text) */}
-                    <div className="flex items-center gap-1 mt-1 select-none shrink-0">
-                      {msg.edited && !msg.deletedForEveryone && (
-                        <span className="text-[9.5px] text-zinc-400 font-medium leading-none select-none">
-                          edited
-                        </span>
-                      )}
-                      <span className="text-[10.5px] text-[#667781] font-medium leading-none">
-                        {msg.time}
-                      </span>
-                      {isOutgoing && !msg.deletedForEveryone && (
-                        <span className={`material-symbols-outlined text-[16px] font-bold leading-none shrink-0 ${
-                          msg.status === "read" ? "text-[#53bdeb]" : "text-[#8696a0]"
-                        }`}>
-                          {msg.status === "sent" ? "done" : "done_all"}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Reaction badge */}
-                    {msg.reaction && (
-                      <div className="absolute -bottom-2.5 left-2 bg-white rounded-full px-1.5 py-0.5 text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.15)] border border-zinc-50 flex items-center justify-center select-none">
-                        {msg.reaction}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {/* Spacer to align bubble spacing with reaction overflow */}
-                {msg.reaction && <div className="h-2"></div>}
+                You blocked this contact. <span className="text-[#008069] dark:text-[#ff2d55] font-bold hover:underline">Tap to unblock.</span>
               </div>
-            );
-          })}
+            </div>
+          )}
+          
+          {amIBlocked && (
+            <div className="flex justify-center my-4 select-none animate-in fade-in duration-200">
+              <div className="bg-[#ffeecd] dark:bg-[#2c200c] text-[#54656f] dark:text-[#8696a0] text-[12.5px] font-medium px-4 py-2 rounded-[10px] shadow-[0_1px_2px_rgba(0,0,0,0.08)] max-w-[85%] text-center leading-normal border border-[#f5e3bc] select-none">
+                This contact blocked you.
+              </div>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </main>
       </div>
@@ -2333,14 +2556,30 @@ export default function ChatConversationPage({ params: paramsPromise }) {
 
           {isBlocked ? (
             <div 
-              onClick={() => {
-                setIsBlocked(false);
-                showToast("Contact unblocked");
+              onClick={async () => {
+
+                const otherParticipant = conversation?.participants?.find(p => p._id !== currentUserId) || {};
+                if (otherParticipant._id) {
+                  try {
+                    await unblockUser(otherParticipant._id);
+                    setIsBlocked(false);
+                    showToast("Contact unblocked");
+                  } catch (err) {
+                    console.error("Failed to unblock contact:", err);
+                    showToast(err.message || "Failed to unblock contact");
+                  }
+                }
               }}
               className="flex items-center justify-center bg-white rounded-xl py-3 px-4 shadow-sm border border-zinc-200/80 cursor-pointer w-full active:scale-95 transition-all select-none"
             >
               <span className="text-[14.5px] text-[#667781] text-center font-medium">
                 You blocked this contact. <span className="text-[#00a884] font-bold hover:underline">Tap to unblock.</span>
+              </span>
+            </div>
+          ) : amIBlocked ? (
+            <div className="flex items-center justify-center bg-white rounded-xl py-3 px-4 shadow-sm border border-zinc-200/80 w-full select-none animate-in fade-in duration-200">
+              <span className="text-[14.5px] text-[#667781] text-center font-medium">
+                You cannot send messages to this contact.
               </span>
             </div>
           ) : isRecording ? (
@@ -2382,6 +2621,11 @@ export default function ChatConversationPage({ params: paramsPromise }) {
                   send
                 </span>
               </button>
+            </div>
+          ) : (conversation?.onlyAdminsCanSend && !isCurrentUserAdmin) ? (
+            <div className="flex-grow bg-zinc-50 dark:bg-zinc-900 rounded-full flex items-center justify-center min-h-[44px] px-4 py-2 border border-zinc-200 dark:border-zinc-800">
+              <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-500 mr-2 text-[20px]">lock</span>
+              <span className="text-[13.5px] text-zinc-500 dark:text-zinc-400 font-medium">Only admins can send messages</span>
             </div>
           ) : (
             <form onSubmit={editingMessage ? handleEditSend : handleSend} className="flex items-center gap-2 w-full">
@@ -2531,85 +2775,6 @@ export default function ChatConversationPage({ params: paramsPromise }) {
 
             </div>
 
-            {/* Gallery Image Grid (Recent Media) */}
-            <div className="grid grid-cols-4 gap-1 px-1 pb-1 shrink-0 select-none bg-zinc-50/50 border-t border-zinc-100">
-              {/* Thumbnail 1: Delivered placeholder */}
-              <div className="aspect-square bg-zinc-100 relative overflow-hidden flex flex-col justify-end p-2 cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all">
-                <div className="absolute top-1 left-1.5 text-[5px] text-zinc-400 font-mono leading-none bg-white/40 p-0.5 rounded">
-                  Delivered<br/>2 July, 18:17
-                </div>
-                <div className="w-full h-full flex items-center justify-center bg-white">
-                  <span className="material-symbols-outlined text-zinc-300 text-[28px]">article</span>
-                </div>
-              </div>
-
-              {/* Thumbnail 2: QR Code */}
-              <div className="aspect-square bg-zinc-200 relative overflow-hidden cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all">
-                <img 
-                  src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=150&fit=crop&q=80" 
-                  alt="QR Code Scan screenshot" 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
-
-              {/* Thumbnail 3: Laptop Photo (with time/video tag) */}
-              <div className="aspect-square bg-zinc-200 relative overflow-hidden cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all">
-                <img 
-                  src="https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=150&fit=crop&q=80" 
-                  alt="Laptop keyboard" 
-                  className="w-full h-full object-cover" 
-                />
-                <div className="absolute bottom-1 left-1.5 flex items-center gap-0.5 bg-black/40 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold">
-                  <span className="material-symbols-outlined text-[10px] fill">videocam</span>
-                  <span>0:29</span>
-                </div>
-              </div>
-
-              {/* Thumbnail 4: Explorer folder */}
-              <div className="aspect-square bg-zinc-200 relative overflow-hidden cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all">
-                <img 
-                  src="https://images.unsplash.com/photo-1563986768609-322da13575f3?w=150&fit=crop&q=80" 
-                  alt="Desktop explorer" 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
-
-              {/* Thumbnail 5: smartphone layout */}
-              <div className="aspect-square bg-zinc-200 relative overflow-hidden cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all">
-                <img 
-                  src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=150&fit=crop&q=80" 
-                  alt="Smart Phone Layout" 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
-
-              {/* Thumbnail 6: Code editor */}
-              <div className="aspect-square bg-zinc-200 relative overflow-hidden cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all">
-                <img 
-                  src="https://images.unsplash.com/photo-1607799279861-4dd421887fb3?w=150&fit=crop&q=80" 
-                  alt="Developer screen" 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
-
-              {/* Thumbnail 7: Landscape view */}
-              <div className="aspect-square bg-zinc-200 relative overflow-hidden cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all">
-                <img 
-                  src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=150&fit=crop&q=80" 
-                  alt="Beach landscape" 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
-
-              {/* Thumbnail 8: Document sheet scan */}
-              <div className="aspect-square bg-zinc-200 relative overflow-hidden cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all">
-                <img 
-                  src="https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=150&fit=crop&q=80" 
-                  alt="Document/Text layout" 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
-            </div>
           </div>
         )}
       </div>
@@ -2864,93 +3029,108 @@ export default function ChatConversationPage({ params: paramsPromise }) {
         </div>
       )}
 
-      {/* Disappearing Messages Screen (Dark Theme - Reference Image 1) */}
+      {/* Disappearing Messages Dialog (Popup Modal styled) */}
       {showDisappearing && (
-        <div className="fixed inset-0 z-[60] bg-[#0b141a] text-white flex flex-col font-sans select-none animate-in fade-in duration-200">
-          {/* Header */}
-          <header className="flex items-center h-[56px] px-3.5 shrink-0 border-b border-[#222c32] bg-[#0b141a]">
-            <button
-              onClick={() => {
-                setShowDisappearing(false);
-                showToast(`Disappearing messages set to ${disappearingTimer}`);
-              }}
-              className="text-[#8696a0] hover:text-white p-1.5 hover:bg-[#202c33] rounded-full active:scale-95 transition-all shrink-0"
-            >
-              <span className="material-symbols-outlined text-[24px]">arrow_back</span>
-            </button>
-            <h1 className="text-[19px] font-bold text-[#e9edef] ml-3">
-              Disappearing messages
-            </h1>
-          </header>
-
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto no-scrollbar px-6 py-6 flex flex-col items-center">
-            {/* SVG Clock Illustration */}
-            <div className="w-[180px] h-[130px] relative flex items-center justify-center mb-6">
-              <svg viewBox="0 0 100 80" className="w-full h-full text-[#00a884]">
-                <path d="M70 20 C75 20, 85 25, 85 35 C85 45, 75 50, 70 50 C68 50, 60 48, 55 52 L55 45 C52 40, 55 30, 60 25 C65 20, 68 20, 70 20 Z" fill="#efeae2" fillOpacity="0.15" />
-                <circle cx="34" cy="18" r="4" fill="#a3e635" fillOpacity="0.5" />
-                <circle cx="28" cy="24" r="2.5" fill="#a3e635" fillOpacity="0.5" />
-                <circle cx="30" cy="32" r="1.5" fill="#a3e635" fillOpacity="0.5" />
-                <circle cx="48" cy="40" r="22" fill="#00a884" />
-                <circle cx="48" cy="40" r="20" fill="none" stroke="#0b141a" strokeWidth="2.5" strokeDasharray="3,3" />
-                <line x1="48" y1="40" x2="48" y2="28" stroke="#0b141a" strokeWidth="2.5" strokeLinecap="round" />
-                <line x1="48" y1="40" x2="56" y2="40" stroke="#0b141a" strokeWidth="2.5" strokeLinecap="round" />
-                <circle cx="48" cy="40" r="3" fill="#0b141a" />
-                <circle cx="38" cy="56" r="12" fill="#d9fdd3" fillOpacity="0.8" />
-                <circle cx="46" cy="58" r="8" fill="#d9fdd3" fillOpacity="0.6" />
-              </svg>
+        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4 select-none animate-in fade-in duration-200">
+          <div className="bg-white rounded-[28px] shadow-2xl w-full max-w-[340px] overflow-hidden flex flex-col font-sans border border-zinc-100 animate-in zoom-in-95 duration-150 text-[#111b21]">
+            
+            {/* Header */}
+            <div className="bg-[#00a884] text-white px-5 py-4 flex items-center justify-between">
+              <span className="text-[17px] font-semibold">Disappearing messages</span>
+              <button 
+                onClick={() => setShowDisappearing(false)}
+                className="text-white hover:bg-[#009071] p-1 rounded-full active:scale-90 transition-transform"
+              >
+                <span className="material-symbols-outlined text-[20px] font-bold">close</span>
+              </button>
             </div>
 
-            <h2 className="text-[15.5px] font-semibold text-white w-full text-left mt-2 tracking-wide">
-              Make messages in this chat disappear
-            </h2>
-            <p className="text-[13.5px] leading-relaxed text-[#8696a0] mt-2 mb-6 text-left">
-              For more privacy and storage, new messages will disappear from this chat for everyone after the selected duration except when kept. Anyone in the chat can change this setting. <span className="text-[#53bdeb] cursor-pointer hover:underline font-semibold">Learn more</span>
-            </p>
+            {/* Body */}
+            <div className="px-5 py-4 overflow-y-auto max-h-[360px] flex flex-col items-center">
+              {/* SVG Clock Illustration */}
+              <div className="w-[120px] h-[80px] relative flex items-center justify-center mb-3">
+                <svg viewBox="0 0 100 80" className="w-full h-full text-[#00a884]">
+                  <path d="M70 20 C75 20, 85 25, 85 35 C85 45, 75 50, 70 50 C68 50, 60 48, 55 52 L55 45 C52 40, 55 30, 60 25 C65 20, 68 20, 70 20 Z" fill="#efeae2" fillOpacity="0.5" />
+                  <circle cx="34" cy="18" r="4" fill="#a3e635" fillOpacity="0.5" />
+                  <circle cx="28" cy="24" r="2.5" fill="#a3e635" fillOpacity="0.5" />
+                  <circle cx="30" cy="32" r="1.5" fill="#a3e635" fillOpacity="0.5" />
+                  <circle cx="48" cy="40" r="22" fill="#00a884" />
+                  <circle cx="48" cy="40" r="20" fill="none" stroke="#fff" strokeWidth="2.5" strokeDasharray="3,3" />
+                  <line x1="48" y1="40" x2="48" y2="28" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+                  <line x1="48" y1="40" x2="56" y2="40" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+                  <circle cx="48" cy="40" r="3" fill="#fff" />
+                  <circle cx="38" cy="56" r="12" fill="#d9fdd3" fillOpacity="0.8" />
+                  <circle cx="46" cy="58" r="8" fill="#d9fdd3" fillOpacity="0.6" />
+                </svg>
+              </div>
 
-            <div className="h-[1px] bg-[#222c32] w-full mb-4"></div>
+              <p className="text-[13px] leading-relaxed text-zinc-500 mb-4 text-center">
+                For more privacy and storage, new messages will disappear from this chat for everyone after the selected duration.
+              </p>
 
-            <span className="text-[13px] font-bold text-[#8696a0] uppercase tracking-wider w-full text-left mb-4 select-none">
-              Message timer
-            </span>
+              <div className="h-[1px] bg-zinc-100 w-full mb-3"></div>
 
-            {/* Radio Duration List */}
-            <div className="flex flex-col w-full gap-4.5">
-              {["24 hours", "7 days", "90 days", "Off"].map((timer) => {
-                const isSelected = disappearingTimer === timer;
-                return (
-                  <div 
-                    key={timer}
-                    onClick={() => setDisappearingTimer(timer)}
-                    className="flex items-center justify-between cursor-pointer select-none"
-                  >
-                    <span className="text-[15.5px] text-[#e9edef] font-medium">{timer}</span>
-                    <div className={`w-[20px] h-[20px] rounded-full border-2 flex items-center justify-center transition-colors ${
-                      isSelected ? "border-[#00a884]" : "border-[#8696a0]"
-                    }`}>
-                      {isSelected && (
-                        <div className="w-[10px] h-[10px] rounded-full bg-[#00a884]"></div>
-                      )}
+              <span className="text-[12px] font-bold text-zinc-400 uppercase tracking-wider w-full text-left mb-3 select-none">
+                Message timer
+              </span>
+
+              {/* Radio Duration List */}
+              <div className="flex flex-col w-full gap-3">
+                {["24 hours", "7 days", "90 days", "Off"].map((timer) => {
+                  const isSelected = disappearingTimer === timer;
+                  return (
+                    <div 
+                      key={timer}
+                      onClick={() => setDisappearingTimer(timer)}
+                      className="flex items-center justify-between cursor-pointer select-none py-1 hover:bg-zinc-50 rounded-lg px-2"
+                    >
+                      <span className="text-[14.5px] text-zinc-800 font-medium">{timer}</span>
+                      <div className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center transition-colors ${
+                        isSelected ? "border-[#00a884]" : "border-zinc-300"
+                      }`}>
+                        {isSelected && (
+                          <div className="w-[8px] h-[8px] rounded-full bg-[#00a884]"></div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="h-[1px] bg-[#222c32] w-full my-6"></div>
-
-            {/* Try Default Timer */}
-            <div 
-              onClick={() => showToast("Default message timer settings coming soon!")}
-              className="flex items-start w-full cursor-pointer hover:bg-[#202c33] active:bg-[#10171d] p-3 -mx-3 rounded-xl transition-all select-none"
-            >
-              <span className="material-symbols-outlined text-[#8696a0] text-[23px] mt-0.5 mr-4 font-semibold">schedule</span>
-              <div className="flex-1">
-                <span className="block text-[15.5px] font-medium text-[#e9edef]">Try a default message timer</span>
-                <span className="block text-[12.5px] text-[#8696a0] mt-0.5">Start your new chats with disappearing messages</span>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Footer */}
+            <div className="bg-zinc-50 border-t border-zinc-100 px-5 py-3 flex justify-end gap-3 select-none">
+              <button 
+                onClick={() => setShowDisappearing(false)}
+                className="px-4 py-2 rounded-full hover:bg-zinc-200 text-zinc-600 font-semibold text-[13.5px] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={async () => {
+                  const prevTimer = localStorage.getItem("disappearingTimer_" + id) || "Off";
+                  if (prevTimer !== disappearingTimer) {
+                    localStorage.setItem("disappearingTimer_" + id, disappearingTimer);
+                    
+                    const msgText = disappearingTimer === "Off" 
+                      ? "You turned off disappearing messages." 
+                      : `You turned on disappearing messages. All new messages will disappear from this chat ${disappearingTimer} after they are sent, except when kept.`;
+
+                    try {
+                      await sendMessage(id, { text: msgText, type: "system" });
+                    } catch (err) {
+                      console.error("Failed to save disappearing message timer system message:", err);
+                    }
+                  }
+                  setShowDisappearing(false);
+                  showToast(`Disappearing messages set to ${disappearingTimer}`);
+                }}
+                className="bg-[#00a884] hover:bg-[#009071] text-white px-5 py-2 rounded-full font-bold text-[13.5px] transition-all cursor-pointer active:scale-95"
+              >
+                Save
+              </button>
+            </div>
+
           </div>
         </div>
       )}
@@ -3684,7 +3864,7 @@ export default function ChatConversationPage({ params: paramsPromise }) {
 
             {/* Contacts list */}
             <div className="flex-1 overflow-y-auto max-h-[300px] py-2">
-              {newGroupContacts.map((contact) => (
+              {chatsList.map((contact) => (
                 <div 
                   key={contact.id} 
                   onClick={() => handleShareContact(contact)}
@@ -3692,10 +3872,10 @@ export default function ChatConversationPage({ params: paramsPromise }) {
                 >
                   {/* Avatar */}
                   {contact.avatar ? (
-                    <img src={contact.avatar} className="w-[42px] h-[42px] rounded-full object-cover shrink-0" />
+                    <img src={getAvatarUrl(contact.avatar)} className="w-[42px] h-[42px] rounded-full object-cover shrink-0" />
                   ) : (
-                    <div className={`w-[42px] h-[42px] rounded-full flex items-center justify-center text-[15px] font-bold shrink-0 ${contact.avatarBg || "bg-[#00a884] text-white"}`}>
-                      {contact.avatarText || contact.name.charAt(0).toUpperCase()}
+                    <div className="w-[42px] h-[42px] rounded-full flex items-center justify-center text-[15px] font-bold shrink-0 bg-[#00a884] text-white">
+                      {contact.name.charAt(0).toUpperCase()}
                     </div>
                   )}
                   {/* Name */}
@@ -3952,6 +4132,283 @@ export default function ChatConversationPage({ params: paramsPromise }) {
             className="max-w-full max-h-[85vh] object-contain rounded shadow-2xl animate-in zoom-in-95 duration-200" 
             onClick={(e) => e.stopPropagation()} 
           />
+        </div>
+      )}
+
+      {/* Sliding Group Info Drawer Panel */}
+      {showGroupInfo && conversation && (
+        <div className="fixed inset-y-0 right-0 z-[200] w-full max-w-[380px] bg-zinc-50 dark:bg-[#0b141a] border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col font-sans select-none animate-in slide-in-from-right duration-250 text-[#111b21] dark:text-[#e9edef]">
+          
+          {/* Header */}
+          <div className="bg-[#00a884] text-white px-5 py-4 flex items-center gap-4 shrink-0 shadow-sm">
+            <button 
+              type="button"
+              onClick={() => setShowGroupInfo(false)}
+              className="text-white hover:bg-[#009071] p-1.5 rounded-full active:scale-95 transition-transform cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[22px] font-bold">arrow_back</span>
+            </button>
+            <span className="text-[18px] font-semibold">Group Info</span>
+          </div>
+
+          {/* Drawer Body Scroll Container */}
+          <div className="flex-1 overflow-y-auto space-y-3.5 pb-8 scrollbar-thin">
+            
+            {/* Section 1: Hero Info Card */}
+            <div className="bg-white dark:bg-[#111b21] border-b border-zinc-200/50 dark:border-zinc-800/50 p-6 flex flex-col items-center text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              <div className="w-32 h-32 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm mb-4 relative group flex items-center justify-center">
+                {conversation.avatarUrl ? (
+                  <img src={conversation.avatarUrl} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="material-symbols-outlined text-[64px] text-zinc-400">group</span>
+                )}
+                {isCurrentUserAdmin && (
+                  <div className="absolute inset-0 bg-black/40 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <span className="material-symbols-outlined text-white text-[22px]">camera_alt</span>
+                  </div>
+                )}
+              </div>
+
+              <h2 className="text-xl font-bold truncate w-full">{conversation.name}</h2>
+              <span className="text-[13px] text-[#667781] dark:text-[#8696a0] font-medium mt-1">
+                Group • {conversation.participants.length} participants
+              </span>
+            </div>
+
+            {/* Section 2: Group Description */}
+            <div className="bg-white dark:bg-[#111b21] p-5 border-y border-zinc-200/50 dark:border-zinc-800/50 shadow-sm flex flex-col">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-[13px] font-bold text-[#00a884] uppercase tracking-wide">Description</span>
+                {isCurrentUserAdmin && (
+                  <button 
+                    onClick={async () => {
+                      const newDesc = prompt("Edit Group Description:", conversation.groupDescription || "");
+                      if (newDesc === null) return;
+                      try {
+                        const { updateGroupInfo } = await import("@/services/chat/groupChat");
+                        const res = await updateGroupInfo(id, { groupDescription: newDesc.trim() });
+                        if (res && res.success && res.data) {
+                          setConversation(res.data);
+                          showToast("Group description updated");
+                        }
+                      } catch (err) {
+                        alert(err.message || "Failed to update description");
+                      }
+                    }}
+                    className="text-[#00a884] text-[13px] font-semibold hover:underline"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
+              <p className="text-[14.5px] leading-relaxed text-zinc-600 dark:text-zinc-300">
+                {conversation.groupDescription || "No description provided."}
+              </p>
+            </div>
+
+            {/* Section 3: Group Settings (Admins Only Can Send Messages Option) */}
+            {isCurrentUserAdmin && (
+              <div className="bg-white dark:bg-[#111b21] p-5 border-y border-zinc-200/50 dark:border-zinc-800/50 shadow-sm flex flex-col gap-4">
+                <span className="text-[13px] font-bold text-[#00a884] uppercase tracking-wide">Group Settings</span>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col flex-1 pr-4">
+                    <span className="text-[14.5px] font-medium">Send messages</span>
+                    <span className="text-[12px] text-[#667781] dark:text-[#8696a0] mt-0.5">Restrict messaging to group admins only</span>
+                  </div>
+                  
+                  {/* Toggle switch */}
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const { updateGroupInfo } = await import("@/services/chat/groupChat");
+                        const targetVal = !conversation.onlyAdminsCanSend;
+                        const res = await updateGroupInfo(id, { onlyAdminsCanSend: targetVal });
+                        if (res && res.success && res.data) {
+                          setConversation(res.data);
+                          showToast(targetVal ? "Only admins can send messages" : "All participants can send messages");
+                        }
+                      } catch (err) {
+                        alert(err.message || "Failed to update setting");
+                      }
+                    }}
+                    className={`w-10 h-[22px] rounded-full p-[2px] transition-colors relative ${
+                      conversation.onlyAdminsCanSend ? "bg-[#00a884]" : "bg-zinc-300 dark:bg-zinc-700"
+                    }`}
+                  >
+                    <div className={`w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform ${
+                      conversation.onlyAdminsCanSend ? "translate-x-[18px]" : "translate-x-0"
+                    }`} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Section 4: Members List */}
+            <div className="bg-white dark:bg-[#111b21] border-y border-zinc-200/50 dark:border-zinc-800/50 shadow-sm flex flex-col">
+              {/* Header inside list */}
+              <div className="flex justify-between items-center px-5 py-4 border-b border-zinc-100 dark:border-zinc-800/50">
+                <span className="text-[14.5px] font-bold text-zinc-500">
+                  {conversation.participants.length} participants
+                </span>
+                
+                {/* Add Participant action (Admin only) */}
+                {isCurrentUserAdmin && (
+                  <button 
+                    onClick={async () => {
+                      const phone = prompt("Enter contact phone number to add to group:");
+                      if (!phone) return;
+                      try {
+                        const { addContact } = await import("@/services/user/contacts");
+                        const contactRes = await addContact(phone.trim(), phone.trim());
+                        if (contactRes && contactRes.success) {
+                          const targetUserId = contactRes.data.contactUserId || contactRes.data._id;
+                          const { addGroupMembers } = await import("@/services/chat/groupChat");
+                          const res = await addGroupMembers(id, [targetUserId]);
+                          if (res && res.success && res.data) {
+                            setConversation(res.data);
+                            showToast("Member added successfully");
+                          }
+                        }
+                      } catch (err) {
+                        alert(err.message || "Failed to add member to group");
+                      }
+                    }}
+                    className="flex items-center gap-1 text-[#00a884] text-[13.5px] font-bold active:scale-95 transition-transform"
+                  >
+                    <span className="material-symbols-outlined text-[19px]">person_add</span>
+                    <span>Add Member</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Members rows */}
+              <div className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                {conversation.participants.map((p) => {
+
+
+                  const isSelf = p._id === currentUserId;
+                  const isAdmin = conversation.admins.some(admin => (admin._id || admin).toString() === p._id.toString());
+                  
+                  return (
+                    <div key={p._id} className="flex items-center justify-between px-5 py-3 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors group">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {renderAvatar(p.avatarUrl, p.displayName, "w-[38px] h-[38px]", "text-[18px]")}
+                        <div className="flex flex-col min-w-0 leading-tight">
+                          <span className="text-[14.5px] font-semibold truncate">
+                            {isSelf ? "You" : (p.displayName || p.phoneNumber)}
+                          </span>
+                          <span className="text-[11.5px] text-[#667781] dark:text-[#8696a0] truncate mt-0.5">
+                            {p.about || "Available"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 ml-3">
+                        {isAdmin && (
+                          <span className="text-[10px] text-[#00a884] dark:text-[#00a884]/90 border border-[#00a884]/30 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider scale-90">
+                            Admin
+                          </span>
+                        )}
+
+                        {/* Admin Action Menu for managing members */}
+                        {isCurrentUserAdmin && !isSelf && (
+                          <div className="relative group/menu">
+                            <button className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full text-zinc-400 group-hover/menu:text-zinc-600 transition-colors cursor-pointer">
+                              <span className="material-symbols-outlined text-[19px]">more_horiz</span>
+                            </button>
+                            
+                            {/* Hover dropdown list */}
+                            <div className="absolute right-0 bottom-full mb-1 bg-white dark:bg-[#233138] border border-zinc-200 dark:border-zinc-700 shadow-xl rounded-xl py-1.5 w-[140px] text-[13px] text-[#111b21] dark:text-[#e9edef] z-[300] hidden group-hover/menu:block hover:block">
+                              {!isAdmin ? (
+                                <button 
+                                  onClick={async () => {
+                                    try {
+                                      const { makeAdmin } = await import("@/services/chat/groupChat");
+                                      const res = await makeAdmin(id, p._id);
+                                      if (res && res.success && res.data) {
+                                        setConversation(res.data);
+                                        showToast(`${p.displayName || p.phoneNumber} is now an admin`);
+                                      }
+                                    } catch (err) {
+                                      alert(err.message || "Failed to make admin");
+                                    }
+                                  }}
+                                  className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors"
+                                >
+                                  Make Admin
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={async () => {
+                                    try {
+                                      const { removeAdmin } = await import("@/services/chat/groupChat");
+                                      const res = await removeAdmin(id, p._id);
+                                      if (res && res.success && res.data) {
+                                        setConversation(res.data);
+                                        showToast(`Dismissed ${p.displayName || p.phoneNumber} as admin`);
+                                      }
+                                    } catch (err) {
+                                      alert(err.message || "Failed to demote admin");
+                                    }
+                                  }}
+                                  className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors text-rose-500"
+                                >
+                                  Dismiss Admin
+                                </button>
+                              )}
+                              
+                              <button 
+                                onClick={async () => {
+                                  if (!confirm(`Are you sure you want to remove ${p.displayName || p.phoneNumber}?`)) return;
+                                  try {
+                                    const { removeGroupMember } = await import("@/services/chat/groupChat");
+                                    const res = await removeGroupMember(id, p._id);
+                                    if (res && res.success && res.data) {
+                                      setConversation(res.data);
+                                      showToast("Removed member successfully");
+                                    }
+                                  } catch (err) {
+                                    alert(err.message || "Failed to remove member");
+                                  }
+                                }}
+                                className="w-full text-left px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors text-rose-600"
+                              >
+                                Remove User
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Section 5: Exit / Leave Group */}
+            <div className="px-4 py-1 flex flex-col gap-3 shrink-0">
+              <button 
+                onClick={async () => {
+                  if (!confirm("Are you sure you want to leave this group?")) return;
+                  try {
+                    const { leaveGroup } = await import("@/services/chat/groupChat");
+                    const res = await leaveGroup(id);
+                    if (res && res.success) {
+                      showToast("Left group successfully");
+                      router.push("/chats");
+                    }
+                  } catch (err) {
+                    alert(err.message || "Failed to leave group");
+                  }
+                }}
+                className="w-full bg-white dark:bg-[#111b21] hover:bg-rose-50 dark:hover:bg-rose-900/10 text-rose-600 font-bold border border-zinc-200 dark:border-zinc-800 py-3.5 rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer text-center text-[15px]"
+              >
+                Exit Group
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
     </div>
