@@ -4,7 +4,7 @@
   "description": "Monorepo backend root for dependency sharing",
   "private": true,
   "scripts": {
-    "dev": "nodemon index.js"
+    "dev": "node api.js && nodemon index.js"
   },
   "dependencies": {
     "axios": "^1.6.8",
